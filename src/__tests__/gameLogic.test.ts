@@ -9,6 +9,7 @@ import {
   getValidDropTargets,
   calculateScore,
   findAutoMoveToFoundation,
+  findSafeAutoMoves,
 } from '../gameLogic';
 import { SUIT_COLORS } from '../constants';
 
@@ -389,5 +390,78 @@ describe('findAutoMoveToFoundation', () => {
     });
     const target = findAutoMoveToFoundation(state, 'tableau-0', 0);
     expect(target).toBeNull();
+  });
+});
+
+// ── findSafeAutoMoves() ──────────────────────────────────────
+
+describe('findSafeAutoMoves', () => {
+  it('always considers Aces safe to auto-move', () => {
+    const state = emptyState({
+      tableau: [[makeCard('A', 'hearts')], [], [], [], [], [], []],
+    });
+    const moves = findSafeAutoMoves(state);
+    expect(moves).toHaveLength(1);
+    expect(moves[0].from).toBe('tableau-0');
+    expect(moves[0].to).toBe('foundation-0');
+  });
+
+  it('always considers 2s safe to auto-move', () => {
+    const state = emptyState({
+      foundations: [[makeCard('A', 'hearts')], [], [], []],
+      tableau: [[makeCard('2', 'hearts')], [], [], [], [], [], []],
+    });
+    const moves = findSafeAutoMoves(state);
+    expect(moves).toHaveLength(1);
+    expect(moves[0].from).toBe('tableau-0');
+  });
+
+  it('considers a card safe when opposite-color rank-1 cards are on foundations', () => {
+    // Moving red 3 is safe when both black 2s (clubs + spades) are on foundations
+    const state = emptyState({
+      foundations: [
+        [makeCard('A', 'hearts'), makeCard('2', 'hearts')],  // hearts has A,2
+        [makeCard('A', 'diamonds')],  // diamonds has A
+        [makeCard('A', 'clubs'), makeCard('2', 'clubs')],  // clubs has A,2
+        [makeCard('A', 'spades'), makeCard('2', 'spades')],  // spades has A,2
+      ],
+      tableau: [[makeCard('3', 'hearts')], [], [], [], [], [], []],
+    });
+    const moves = findSafeAutoMoves(state);
+    expect(moves).toHaveLength(1);
+    expect(moves[0].from).toBe('tableau-0');
+  });
+
+  it('considers a card NOT safe when opposite-color rank-1 cards are missing', () => {
+    // Moving red 3 is NOT safe if black 2 of clubs is missing from foundation
+    const state = emptyState({
+      foundations: [
+        [makeCard('A', 'hearts'), makeCard('2', 'hearts')],  // hearts has A,2
+        [],  // diamonds empty
+        [makeCard('A', 'clubs')],  // clubs has only A (2 missing!)
+        [makeCard('A', 'spades'), makeCard('2', 'spades')],  // spades has A,2
+      ],
+      tableau: [[makeCard('3', 'hearts')], [], [], [], [], [], []],
+    });
+    const moves = findSafeAutoMoves(state);
+    expect(moves).toHaveLength(0);
+  });
+
+  it('returns empty when no moves available', () => {
+    const state = emptyState({
+      tableau: [[makeCard('K', 'spades')], [], [], [], [], [], []],
+    });
+    const moves = findSafeAutoMoves(state);
+    expect(moves).toHaveLength(0);
+  });
+
+  it('finds safe moves from waste pile', () => {
+    const state = emptyState({
+      waste: [makeCard('A', 'diamonds')],
+    });
+    const moves = findSafeAutoMoves(state);
+    expect(moves).toHaveLength(1);
+    expect(moves[0].from).toBe('waste');
+    expect(moves[0].to).toBe('foundation-1');
   });
 });

@@ -98,8 +98,10 @@ describe('DRAW_STOCK', () => {
     for (const card of next.waste) {
       expect(card.faceUp).toBe(true);
     }
-    // Top of waste should be the last drawn card (was top of stock)
-    expect(next.waste[2].rank).toBe('7');
+    // Top of waste is the last popped card — 3♠ was 2nd from top, popped 3rd
+    // Stock pops: 7♣, 5♦, 3♠ → waste = [7♣, 5♦, 3♠]
+    expect(next.waste[0].rank).toBe('7');
+    expect(next.waste[2].rank).toBe('3');
   });
 
   it('draws remaining cards when stock has fewer than count', () => {
