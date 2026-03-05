@@ -41,7 +41,7 @@ export function HowToPlayModal({ gameType, onClose }: HowToPlayModalProps) {
             fontSize: 'clamp(11px, 2.5vw, 13px)',
           }}
         >
-          {gameType === 'klondike' ? 'Klondike Solitaire' : gameType === 'freecell' ? 'FreeCell' : gameType === 'spider' ? 'Spider Solitaire' : 'Mahjong Solitaire'}
+          {gameType === 'klondike' ? 'Classic Solitaire' : gameType === 'freecell' ? 'FreeCell' : gameType === 'spider' ? 'Spider Solitaire' : 'Mahjong'}
         </div>
 
         {gameType === 'klondike' && <KlondikeRules />}

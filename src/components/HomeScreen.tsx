@@ -9,7 +9,7 @@ interface HomeScreenProps {
 const GAMES: { type: GameType; name: string; description: string; preview: React.ReactNode }[] = [
   {
     type: 'klondike',
-    name: 'Klondike Solitaire',
+    name: 'Classic Solitaire',
     description: 'The classic solitaire card game',
     preview: <KlondikePreview />,
   },
@@ -27,7 +27,7 @@ const GAMES: { type: GameType; name: string; description: string; preview: React
   },
   {
     type: 'mahjong',
-    name: 'Mahjong Solitaire',
+    name: 'Mahjong',
     description: 'Match pairs of free tiles',
     preview: <MahjongPreview />,
   },
@@ -69,12 +69,17 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
           ))}
         </div>
         <h1
-          className="text-white font-extrabold tracking-tight m-0"
-          style={{ fontSize: 'clamp(34px, 9vw, 52px)', textShadow: '0 2px 12px rgba(0,0,0,0.3)', letterSpacing: '-0.5px' }}
+          className="text-white font-extrabold italic m-0"
+          style={{
+            fontSize: 'clamp(36px, 10vw, 56px)',
+            textShadow: '0 2px 12px rgba(0,0,0,0.3), 0 0 40px rgba(255,255,255,0.08)',
+            letterSpacing: '-1px',
+            transform: 'rotate(-2deg)',
+          }}
         >
           Shuffled
         </h1>
-        <p className="text-white/50 m-0 mt-1 tracking-wide uppercase font-medium" style={{ fontSize: 'clamp(10px, 2.5vw, 13px)', letterSpacing: '2px' }}>
+        <p className="text-white/45 m-0 tracking-wide uppercase font-medium" style={{ fontSize: 'clamp(9px, 2.2vw, 12px)', letterSpacing: '2.5px', marginTop: '2px' }}>
           Your favorite card games
         </p>
       </div>
