@@ -6,15 +6,17 @@ import { Board as SpiderBoard } from './games/spider/Board';
 import { Board as MahjongBoard } from './games/mahjong/Board';
 import { HomeScreen } from './components/HomeScreen';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { trackGameSelect, trackGoHome } from './utils/analytics';
 
 type AppView = { screen: 'home' } | { screen: 'game'; game: GameType };
 
 function App() {
   const [view, setView] = useState<AppView>({ screen: 'home' });
 
-  const goHome = useCallback(() => setView({ screen: 'home' }), []);
+  const goHome = useCallback(() => { trackGoHome(); setView({ screen: 'home' }); }, []);
 
   const selectGame = useCallback((game: GameType) => {
+    trackGameSelect(game);
     setView({ screen: 'game', game });
   }, []);
 

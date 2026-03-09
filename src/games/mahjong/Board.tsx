@@ -13,6 +13,7 @@ import { AD_ENABLED } from '../../utils/adConfig';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
+import { trackNewGame, trackGameWon, trackGameLost, trackUndo, trackHint, trackShuffle, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
 
 interface MahjongBoardProps {
   onGoHome?: () => void;
@@ -31,6 +32,7 @@ export function Board({ onGoHome }: MahjongBoardProps) {
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
   const newGameWithAd = useCallback(() => {
+    trackNewGame('mahjong');
     maybeShowInterstitial();
     newGame();
     resetTimer();
@@ -56,6 +58,7 @@ export function Board({ onGoHome }: MahjongBoardProps) {
   );
 
   const handleHint = useCallback(() => {
+    trackHint();
     const pair = getHint(state.tiles);
     if (pair) {
       setHintPair(pair);
@@ -64,6 +67,7 @@ export function Board({ onGoHome }: MahjongBoardProps) {
   }, [state.tiles]);
 
   const handleShuffle = useCallback(() => {
+    trackShuffle();
     shuffle();
     play('stockClick');
   }, [shuffle, play]);
@@ -76,14 +80,20 @@ export function Board({ onGoHome }: MahjongBoardProps) {
     return { cols: maxCol, rows: maxRow };
   }, [state.tiles]);
 
-  // Win sound
+  // Win sound + analytics
   const prevWon = useRef(false);
+  const prevLost = useRef(false);
   useEffect(() => {
     if (state.hasWon && !prevWon.current) {
       play('winCelebration');
+      trackGameWon('mahjong', state.moves, elapsedSeconds, state.score);
+    }
+    if (state.hasLost && !state.hasWon && !prevLost.current) {
+      trackGameLost('mahjong', state.moves);
     }
     prevWon.current = state.hasWon;
-  }, [state.hasWon, play]);
+    prevLost.current = state.hasLost;
+  }, [state.hasWon, state.hasLost, play, state.moves, elapsedSeconds, state.score]);
 
   const tileCount = state.tiles.length;
   const pairsLeft = Math.floor(tileCount / 2);
@@ -99,10 +109,10 @@ export function Board({ onGoHome }: MahjongBoardProps) {
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={false}
         onNewGame={newGameWithAd}
-        onUndo={undo}
+        onUndo={() => { trackUndo('mahjong'); undo(); }}
         onAutoComplete={() => {}}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenHelp={() => setHelpOpen(true)}
+        onOpenSettings={() => { trackOpenSettings('mahjong'); setSettingsOpen(true); }}
+        onOpenHelp={() => { trackOpenHelp('mahjong'); setHelpOpen(true); }}
         onGoHome={onGoHome}
         extraControls={
           <div className="flex items-center gap-1.5">

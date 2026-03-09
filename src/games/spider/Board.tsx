@@ -18,6 +18,7 @@ import { AD_ENABLED } from '../../utils/adConfig';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
+import { trackNewGame, trackGameWon, trackUndo, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
 
 interface SpiderBoardProps {
   onGoHome?: () => void;
@@ -36,6 +37,7 @@ export function Board({ onGoHome }: SpiderBoardProps) {
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
   const newGameWithAd = useCallback(() => {
+    trackNewGame('spider');
     maybeShowInterstitial();
     newGame();
     resetTimer();
@@ -91,14 +93,15 @@ export function Board({ onGoHome }: SpiderBoardProps) {
     [state.selectedCard, selectCard]
   );
 
-  // Win sound
+  // Win sound + analytics
   const prevWon = useRef(false);
   useEffect(() => {
     if (state.hasWon && !prevWon.current) {
       play('winCelebration');
+      trackGameWon('spider', state.moves, elapsedSeconds, state.score);
     }
     prevWon.current = state.hasWon;
-  }, [state.hasWon, play]);
+  }, [state.hasWon, play, state.moves, elapsedSeconds, state.score]);
 
   const validTargetSet = new Set(validTargets);
 
@@ -110,10 +113,10 @@ export function Board({ onGoHome }: SpiderBoardProps) {
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={false}
         onNewGame={newGameWithAd}
-        onUndo={undo}
+        onUndo={() => { trackUndo('spider'); undo(); }}
         onAutoComplete={() => {}}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenHelp={() => setHelpOpen(true)}
+        onOpenSettings={() => { trackOpenSettings('spider'); setSettingsOpen(true); }}
+        onOpenHelp={() => { trackOpenHelp('spider'); setHelpOpen(true); }}
         onGoHome={onGoHome}
         layoutClass="topbar-layout-10"
         extraControls={<CompletedSuitsDisplay completedSuits={state.completedSuits} />}

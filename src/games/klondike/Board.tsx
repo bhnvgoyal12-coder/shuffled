@@ -26,6 +26,7 @@ import { useInterstitialAd } from '../../components/AdInterstitial';
 import { AD_ENABLED } from '../../utils/adConfig';
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
+import { trackNewGame, trackGameWon, trackUndo, trackAutoComplete, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
 
 const DOUBLE_TAP_MS = 400;
 
@@ -49,6 +50,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
   // Wrap newGame so every trigger (TopBar, WinOverlay, Settings) goes
   // through the interstitial counter — ad shows every 3rd new game.
   const newGameWithAd = useCallback(() => {
+    trackNewGame('klondike');
     maybeShowInterstitial();
     newGame();
     resetTimer();
@@ -126,6 +128,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
   const [autoCompleting, setAutoCompleting] = React.useState(false);
 
   const startAutoComplete = useCallback(() => {
+    trackAutoComplete('klondike');
     setAutoCompleting(true);
   }, []);
 
@@ -163,14 +166,15 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
     return () => clearTimeout(timeout);
   }, [state, settings.autoMoveToFoundation, autoCompleting, moveCards, play]);
 
-  // Win celebration sound
+  // Win celebration sound + analytics
   const prevWon = useRef(false);
   useEffect(() => {
     if (state.hasWon && !prevWon.current) {
       play('winCelebration');
+      trackGameWon('klondike', state.moves, elapsedSeconds, state.score);
     }
     prevWon.current = state.hasWon;
-  }, [state.hasWon, play]);
+  }, [state.hasWon, play, state.moves, elapsedSeconds, state.score]);
 
   const validTargetSet = new Set(validTargets);
 
@@ -182,10 +186,10 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={showAutoComplete}
         onNewGame={newGameWithAd}
-        onUndo={undo}
+        onUndo={() => { trackUndo('klondike'); undo(); }}
         onAutoComplete={startAutoComplete}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenHelp={() => setHelpOpen(true)}
+        onOpenSettings={() => { trackOpenSettings('klondike'); setSettingsOpen(true); }}
+        onOpenHelp={() => { trackOpenHelp('klondike'); setHelpOpen(true); }}
         onGoHome={onGoHome}
       />
       <div className="board-grid mx-auto w-full justify-center">

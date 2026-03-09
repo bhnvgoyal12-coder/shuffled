@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { CARD_BACK_THEMES } from '../constants';
 import type { CardBackTheme, DrawMode, GameType, SpiderSuitCount } from '../types';
+import { trackSettingChange } from '../utils/analytics';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -23,6 +24,7 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
 
   const confirmSuitCountChange = () => {
     if (confirmSuitChange !== null) {
+      trackSettingChange('spiderSuitCount', confirmSuitChange);
       updateSetting('spiderSuitCount', confirmSuitChange);
       setConfirmSuitChange(null);
       onNewGame();
@@ -36,6 +38,7 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
 
   const confirmDrawModeChange = () => {
     if (confirmDrawChange !== null) {
+      trackSettingChange('drawMode', confirmDrawChange);
       updateSetting('drawMode', confirmDrawChange);
       setConfirmDrawChange(null);
       onNewGame();
@@ -188,7 +191,7 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
                     background: `repeating-linear-gradient(45deg, ${colors.color1}, ${colors.color1} 2px, ${colors.color2} 2px, ${colors.color2} 4px)`,
                     boxShadow: isSelected ? undefined : '0 1px 3px rgba(0,0,0,0.2)',
                   }}
-                  onClick={() => updateSetting('cardBackTheme', theme)}
+                  onClick={() => { trackSettingChange('cardBackTheme', theme); updateSetting('cardBackTheme', theme); }}
                   aria-label={`${theme} card back`}
                 />
               );
@@ -204,7 +207,7 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
             </label>
             <ToggleSwitch
               checked={settings.soundEnabled}
-              onChange={(v) => updateSetting('soundEnabled', v)}
+              onChange={(v) => { trackSettingChange('soundEnabled', v); updateSetting('soundEnabled', v); }}
             />
           </div>
         </div>
@@ -222,7 +225,7 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
             </div>
             <ToggleSwitch
               checked={settings.timerEnabled}
-              onChange={(v) => updateSetting('timerEnabled', v)}
+              onChange={(v) => { trackSettingChange('timerEnabled', v); updateSetting('timerEnabled', v); }}
             />
           </div>
         </div>
@@ -241,7 +244,7 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
               </div>
               <ToggleSwitch
                 checked={settings.autoMoveToFoundation}
-                onChange={(v) => updateSetting('autoMoveToFoundation', v)}
+                onChange={(v) => { trackSettingChange('autoMoveToFoundation', v); updateSetting('autoMoveToFoundation', v); }}
               />
             </div>
           </div>

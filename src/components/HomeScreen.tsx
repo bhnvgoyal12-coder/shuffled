@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { GameType } from '../types';
 import { HowToPlayModal } from './HowToPlayModal';
+import { trackOpenHelp } from '../utils/analytics';
 
 interface HomeScreenProps {
   onSelectGame: (game: GameType) => void;
@@ -132,7 +133,7 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
                 <span
                   className="text-[#2e7d32]/70 hover:text-[#2e7d32] transition-colors underline decoration-[#2e7d32]/30"
                   style={{ fontSize: 'clamp(9px, 2vw, 11px)' }}
-                  onClick={(e) => { e.stopPropagation(); setHelpGame(game.type); }}
+                  onClick={(e) => { e.stopPropagation(); trackOpenHelp(game.type); setHelpGame(game.type); }}
                 >
                   How to play
                 </span>

@@ -25,6 +25,7 @@ import { useInterstitialAd } from '../../components/AdInterstitial';
 import { AD_ENABLED } from '../../utils/adConfig';
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
+import { trackNewGame, trackGameWon, trackUndo, trackAutoComplete, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
 
 const DOUBLE_TAP_MS = 400;
 
@@ -45,6 +46,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
   const newGameWithAd = useCallback(() => {
+    trackNewGame('freecell');
     maybeShowInterstitial();
     newGame();
     resetTimer();
@@ -114,6 +116,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
   const [autoCompleting, setAutoCompleting] = React.useState(false);
 
   const startAutoComplete = useCallback(() => {
+    trackAutoComplete('freecell');
     setAutoCompleting(true);
   }, []);
 
@@ -145,14 +148,15 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
     return () => clearTimeout(timeout);
   }, [state, settings.autoMoveToFoundation, autoCompleting, moveCards, play]);
 
-  // Win sound
+  // Win sound + analytics
   const prevWon = useRef(false);
   useEffect(() => {
     if (state.hasWon && !prevWon.current) {
       play('winCelebration');
+      trackGameWon('freecell', state.moves, elapsedSeconds, state.score);
     }
     prevWon.current = state.hasWon;
-  }, [state.hasWon, play]);
+  }, [state.hasWon, play, state.moves, elapsedSeconds, state.score]);
 
   const validTargetSet = new Set(validTargets);
 
@@ -164,10 +168,10 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={showAutoComplete}
         onNewGame={newGameWithAd}
-        onUndo={undo}
+        onUndo={() => { trackUndo('freecell'); undo(); }}
         onAutoComplete={startAutoComplete}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenHelp={() => setHelpOpen(true)}
+        onOpenSettings={() => { trackOpenSettings('freecell'); setSettingsOpen(true); }}
+        onOpenHelp={() => { trackOpenHelp('freecell'); setHelpOpen(true); }}
         onGoHome={onGoHome}
         layoutClass="topbar-layout-8"
       />
