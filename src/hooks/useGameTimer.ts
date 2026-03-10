@@ -50,7 +50,18 @@ export function useGameTimer({ gameType, isGameOver, timerEnabled }: UseGameTime
     loadTimer(gameType, timerEnabled, isGameOver),
   );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const elapsedRef = useRef(elapsedSeconds);
   const isActive = timerEnabled && !isGameOver;
+
+  // Keep ref in sync for cleanup closure
+  useEffect(() => { elapsedRef.current = elapsedSeconds; }, [elapsedSeconds]);
+
+  // Save WITHOUT timestamp on unmount → timer freezes when leaving
+  useEffect(() => {
+    return () => {
+      saveTimer(gameType, elapsedRef.current, false);
+    };
+  }, [gameType]);
 
   // Start/stop interval
   useEffect(() => {
