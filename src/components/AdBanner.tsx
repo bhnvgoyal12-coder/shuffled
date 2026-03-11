@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AD_ENABLED } from '../utils/adConfig';
 
 declare global {
@@ -10,13 +10,14 @@ declare global {
 /**
  * Persistent bottom banner ad.
  *
- * Fixed to the bottom of the viewport so it stays visible while the
- * user scrolls the tableau.  The Board component adds matching bottom
- * padding so content isn't hidden behind it.
+ * Fixed to the bottom of the viewport. Collapses to zero height when
+ * no ad is served (e.g. in dev or before AdSense approval).
  */
 export const AdBanner = React.memo(function AdBanner() {
   const adRef = useRef<HTMLModElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const pushed = useRef(false);
+  const [adLoaded, setAdLoaded] = useState(false);
 
   useEffect(() => {
     if (adRef.current && !pushed.current) {
@@ -27,16 +28,33 @@ export const AdBanner = React.memo(function AdBanner() {
         // AdSense not loaded or blocked
       }
     }
+
+    // Watch for AdSense filling the slot (it changes the <ins> height)
+    const ins = adRef.current;
+    if (!ins) return;
+
+    const observer = new MutationObserver(() => {
+      if (ins.offsetHeight > 0 && ins.querySelector('iframe')) {
+        setAdLoaded(true);
+        observer.disconnect();
+      }
+    });
+    observer.observe(ins, { childList: true, subtree: true, attributes: true });
+
+    return () => observer.disconnect();
   }, []);
 
   if (!AD_ENABLED) return null;
 
   return (
     <div
+      ref={containerRef}
       className="fixed bottom-0 left-0 right-0 z-[9000]"
       style={{
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        background: '#1b5e20',
+        paddingBottom: adLoaded ? 'env(safe-area-inset-bottom)' : 0,
+        overflow: 'hidden',
+        // Only visible once an ad actually loads
+        maxHeight: adLoaded ? 'none' : 0,
       }}
     >
       <ins
@@ -45,7 +63,7 @@ export const AdBanner = React.memo(function AdBanner() {
         style={{ display: 'block' }}
         data-ad-client="ca-pub-0252848696122291"
         data-ad-slot="7277828243"
-        data-ad-format="auto"
+        data-ad-format="horizontal"
         data-full-width-responsive="true"
       />
     </div>
