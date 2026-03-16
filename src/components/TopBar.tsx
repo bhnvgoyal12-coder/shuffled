@@ -65,16 +65,16 @@ export const TopBar = React.memo(function TopBar({
             </button>
           )}
           <button
-            className={iconBtnClass}
-            style={iconPad}
+            className="bg-white/12 text-white border border-white/18 rounded-lg cursor-pointer backdrop-blur-[4px] transition-[background,transform] hover:bg-white/22 active:scale-[0.96] flex items-center justify-center font-semibold whitespace-nowrap"
+            style={{
+              padding: 'clamp(6px, 1.2vw, 8px) clamp(10px, 2vw, 14px)',
+              fontSize: 'clamp(11px, 2.5vw, 13px)',
+            }}
             onClick={() => { onNewGame(); showToast('New Game'); }}
             title="New Game"
             aria-label="New Game"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={iconSize}>
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
+            New
           </button>
           <button
             className={iconBtnClass}
