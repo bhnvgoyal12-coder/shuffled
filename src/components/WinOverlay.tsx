@@ -7,9 +7,10 @@ interface WinOverlayProps {
   time?: string;
   isNewBest?: boolean;
   onNewGame: () => void;
+  onGoHome?: () => void;
 }
 
-export function WinOverlay({ moves, score, time, isNewBest, onNewGame }: WinOverlayProps) {
+export function WinOverlay({ moves, score, time, isNewBest, onNewGame, onGoHome }: WinOverlayProps) {
   useEffect(() => {
     // Initial bursts
     confetti({
@@ -95,12 +96,26 @@ export function WinOverlay({ moves, score, time, isNewBest, onNewGame }: WinOver
             </div>
           )}
         </div>
-        <button
-          className="bg-[#2e7d32] text-white border-none rounded-xl px-9 py-3.5 text-base font-semibold cursor-pointer transition-[background,transform] duration-200 hover:bg-[#388e3c] active:scale-[0.96]"
-          onClick={onNewGame}
-        >
-          New Game
-        </button>
+        <div className="flex items-center justify-center gap-3">
+          {onGoHome && (
+            <button
+              className="bg-[#e0e0e0] text-[#555] border-none rounded-xl p-3.5 cursor-pointer transition-[background,transform] duration-200 hover:bg-[#d0d0d0] active:scale-[0.96]"
+              onClick={onGoHome}
+              aria-label="Go home"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12l9-9 9 9" />
+                <path d="M9 21V12h6v9" />
+              </svg>
+            </button>
+          )}
+          <button
+            className="bg-[#2e7d32] text-white border-none rounded-xl px-9 py-3.5 text-base font-semibold cursor-pointer transition-[background,transform] duration-200 hover:bg-[#388e3c] active:scale-[0.96]"
+            onClick={onNewGame}
+          >
+            New Game
+          </button>
+        </div>
       </div>
     </div>
   );

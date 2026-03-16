@@ -200,7 +200,7 @@ export function Board({ onGoHome }: SpiderBoardProps) {
       )}
 
       {state.hasWon && (
-        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={() => { setIsNewBest(false); newGameWithAd(); }} />
+        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={() => { setIsNewBest(false); newGameWithAd(); }} onGoHome={onGoHome} />
       )}
 
       {settingsOpen && (

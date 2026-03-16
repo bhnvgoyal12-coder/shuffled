@@ -306,6 +306,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
           time={settings.timerEnabled ? formattedTime : undefined}
           isNewBest={isNewBest}
           onNewGame={() => { setIsNewBest(false); newGameWithAd(); }}
+          onGoHome={onGoHome}
         />
       )}
 
