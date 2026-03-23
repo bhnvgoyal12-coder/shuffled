@@ -13,7 +13,7 @@ export const WordList = React.memo(function WordList({ words, foundWords }: Word
       className="flex flex-wrap justify-center"
       style={{
         gap: 'clamp(4px, 1vw, 8px)',
-        padding: 'clamp(8px, 2vw, 16px) 0',
+        padding: 'clamp(16px, 4vw, 28px) 0 clamp(8px, 2vw, 16px)',
       }}
     >
       {words.map((w) => {
