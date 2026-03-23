@@ -10,7 +10,7 @@
   --card-height: calc(var(--card-width) * 1.4);
   --card-radius: calc(var(--card-width) * 0.1);
   --card-gap: clamp(3px, 1vw, 14px);
-  --tableau-offset: clamp(16px, 3.5vw, 28px);
+  --tableau-offset: clamp(22px, 4.5vw, 36px);
   --tableau-offset-down: clamp(5px, 1.2vw, 10px);
   --card-font-size: clamp(14px, 3.5vw, 20px);
   --card-center-font-size: clamp(26px, 7vw, 40px);
@@ -28,7 +28,7 @@
 /* Small mobile screens — compress tableau to reduce scrolling */
 @media (max-height: 700px) and (max-width: 500px) {
   :root {
-    --tableau-offset: clamp(14px, 3vw, 22px);
+    --tableau-offset: clamp(18px, 3.5vw, 28px);
     --tableau-offset-down: clamp(3px, 0.8vw, 6px);
   }
 }
@@ -36,7 +36,7 @@
 /* Landscape on small devices */
 @media (orientation: landscape) and (max-height: 500px) {
   :root {
-    --tableau-offset: clamp(12px, 2vw, 18px);
+    --tableau-offset: clamp(16px, 2.5vw, 22px);
     --tableau-offset-down: 4px;
   }
 }
@@ -156,7 +156,7 @@ body::before {
   --card-font-size: clamp(11px, 2.8vw, 17px);
   --card-center-font-size: clamp(20px, 5.5vw, 34px);
   --card-pip-size: clamp(8px, 2.2vw, 13px);
-  --tableau-offset: clamp(14px, 3vw, 24px);
+  --tableau-offset: clamp(18px, 3.5vw, 30px);
   --tableau-offset-down: clamp(4px, 1vw, 8px);
 }
 
