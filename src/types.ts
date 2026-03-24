@@ -67,5 +67,4 @@ export interface Settings {
   spiderSuitCount: SpiderSuitCount;
   homeLayout: HomeLayout;
   timerEnabled: boolean;
-  hiddenGames: GameType[];
 }

@@ -32,7 +32,6 @@ export const DEFAULT_SETTINGS: Settings = {
   spiderSuitCount: 1,
   homeLayout: 'list',
   timerEnabled: true,
-  hiddenGames: [],
 };
 
 export const CARD_BACK_THEMES: Record<CardBackTheme, { color1: string; color2: string; border: string }> = {

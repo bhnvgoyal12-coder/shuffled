@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import type { GameType } from '../types';
 import { HowToPlayModal } from './HowToPlayModal';
-import { SettingsModal } from './SettingsModal';
 import { trackOpenHelp } from '../utils/analytics';
 import { getBestScore } from '../utils/highScores';
-import { useSettings } from '../contexts/SettingsContext';
+import { ENABLED_GAMES } from '../config/enabledGames';
 
 interface HomeScreenProps {
   onSelectGame: (game: GameType) => void;
@@ -49,9 +48,7 @@ const STORAGE_KEYS: Record<GameType, string> = {
 
 export function HomeScreen({ onSelectGame }: HomeScreenProps) {
   const [helpGame, setHelpGame] = useState<GameType | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const { settings } = useSettings();
-  const visibleGames = GAMES.filter(g => !settings.hiddenGames.includes(g.type));
+  const visibleGames = GAMES.filter(g => ENABLED_GAMES.includes(g.type));
 
   return (
     <div
@@ -182,25 +179,8 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
         })}
       </div>
 
-      {/* Settings button */}
-      <button
-        className="mt-4 mb-2 bg-white/10 hover:bg-white/20 text-white/60 hover:text-white/80 border border-white/15 rounded-full cursor-pointer transition-all duration-200 flex items-center gap-1.5"
-        style={{ padding: 'clamp(6px, 1.5vw, 8px) clamp(12px, 3vw, 16px)', fontSize: 'clamp(11px, 2.5vw, 13px)' }}
-        onClick={() => setSettingsOpen(true)}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
-        Settings
-      </button>
-
       {helpGame && (
         <HowToPlayModal gameType={helpGame} onClose={() => setHelpGame(null)} />
-      )}
-
-      {settingsOpen && (
-        <SettingsModal onClose={() => setSettingsOpen(false)} onNewGame={() => setSettingsOpen(false)} />
       )}
     </div>
   );
