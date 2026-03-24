@@ -51,7 +51,7 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
   return (
     <div
       className="flex-1 flex flex-col items-center w-full overflow-y-auto"
-      style={{ padding: 'clamp(16px, 4vw, 32px) clamp(12px, 3vw, 24px)' }}
+      style={{ padding: 'clamp(16px, 4vw, 32px) clamp(12px, 3vw, 24px)', paddingBottom: 'calc(var(--ad-banner-height, 50px) + clamp(16px, 4vw, 32px))' }}
     >
       {/* Logo */}
       <div className="text-center mb-4" style={{ marginTop: 'clamp(12px, 3vh, 32px)' }}>
