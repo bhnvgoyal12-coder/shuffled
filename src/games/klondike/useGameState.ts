@@ -17,6 +17,7 @@ function saveHistory(state: GameState): HistoryEntry {
     tableau: state.tableau.map(cloneCards),
     moves: state.moves,
     score: state.score,
+    wasteFanCount: state.wasteFanCount,
   };
 }
 
@@ -83,6 +84,10 @@ function applyMove(state: GameState, from: PileId, to: PileId, cardIndex: number
     history,
     hasWon: false,
     selectedCard: null,
+    // When playing from waste, shrink the fan; otherwise keep it
+    wasteFanCount: from === 'waste'
+      ? Math.max(1, state.wasteFanCount - 1)
+      : state.wasteFanCount,
   };
 
   newState.hasWon = checkWin(newState);
@@ -113,6 +118,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           waste: newWaste,
           history,
           selectedCard: null,
+          wasteFanCount: drawCount,
         };
       }
 
@@ -124,6 +130,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           waste: [],
           history,
           selectedCard: null,
+          wasteFanCount: 0,
         };
       }
 
@@ -211,6 +218,8 @@ function loadSavedState(): GameState | null {
     }
     // Ensure transient UI state is clean on restore
     parsed.selectedCard = null;
+    // Backfill for saves from before wasteFanCount existed
+    if (parsed.wasteFanCount == null) parsed.wasteFanCount = 1;
     return parsed;
   } catch {
     return null;

@@ -31,6 +31,8 @@ export interface GameState {
   history: HistoryEntry[];
   hasWon: boolean;
   selectedCard: SelectedCard | null;
+  /** How many cards are fanned in the waste pile (Draw 3 mode) */
+  wasteFanCount: number;
 }
 
 export interface HistoryEntry {
@@ -40,6 +42,7 @@ export interface HistoryEntry {
   tableau: Card[][];
   moves: number;
   score: number;
+  wasteFanCount: number;
 }
 
 export type GameAction =

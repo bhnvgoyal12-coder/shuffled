@@ -206,6 +206,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
         <WastePile
           cards={state.waste}
           drawMode={settings.drawMode}
+          fanCount={state.wasteFanCount}
           selectedCardIndex={
             state.selectedCard?.pileId === 'waste'
               ? state.selectedCard.cardIndex

@@ -26,6 +26,7 @@ function emptyState(overrides: Partial<GameState> = {}): GameState {
     history: [],
     hasWon: false,
     selectedCard: null,
+    wasteFanCount: 0,
     ...overrides,
   };
 }

@@ -54,6 +54,7 @@ export function dealGame(): GameState {
     history: [],
     hasWon: false,
     selectedCard: null,
+    wasteFanCount: 0,
   };
 }
 

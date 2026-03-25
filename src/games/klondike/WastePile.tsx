@@ -5,6 +5,7 @@ import { CardComponent } from '../../components/Card';
 interface WastePileProps {
   cards: Card[];
   drawMode: DrawMode;
+  fanCount: number;
   selectedCardIndex: number | null;
   isValidTarget: boolean;
   onPointerDown: (e: React.PointerEvent, pileId: string, cardIndex: number) => void;
@@ -14,6 +15,7 @@ interface WastePileProps {
 export const WastePile = React.memo(function WastePile({
   cards,
   drawMode,
+  fanCount,
   selectedCardIndex,
   isValidTarget,
   onPointerDown,
@@ -25,9 +27,9 @@ export const WastePile = React.memo(function WastePile({
 
   const topIndex = cards.length - 1;
 
-  // For Draw 3, show up to 3 fanned cards
+  // For Draw 3, fan only the cards from the current draw batch
   if (drawMode === 3) {
-    const visibleCount = Math.min(3, cards.length);
+    const visibleCount = Math.min(fanCount || 1, cards.length);
     const visibleCards = cards.slice(cards.length - visibleCount);
     const startIndex = cards.length - visibleCount;
 
