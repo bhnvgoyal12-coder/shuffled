@@ -6,13 +6,13 @@ import { checkSelection, scoreForWord, levelBonus, isLevelComplete } from './gam
 
 const STORAGE_KEY = 'shuffled-wordsearch-state';
 
-function createNewGame(level: number = 1): WordSearchGameState {
+function createNewGame(level: number = 1, carryScore: number = 0): WordSearchGameState {
   const config = getLevelConfig(level);
   return {
     grid: generateGrid(config),
     currentLevel: level,
     foundWords: [],
-    score: 0,
+    score: carryScore,
     moves: 0,
     hasWon: false,
     history: [],
@@ -90,6 +90,10 @@ function loadState(): WordSearchGameState {
       const parsed = JSON.parse(saved) as WordSearchGameState;
       // Validate basic structure
       if (parsed.grid && parsed.grid.cells && parsed.grid.words) {
+        // If previous level was won, auto-advance to next level
+        if (parsed.hasWon) {
+          return createNewGame(parsed.currentLevel + 1, parsed.score);
+        }
         return parsed;
       }
     }

@@ -227,7 +227,10 @@ function saveState(state: GameState): void {
 
 export function useGameState() {
   const [state, dispatch] = useReducer(gameReducer, null, () => {
-    return loadSavedState() ?? dealGame();
+    const saved = loadSavedState();
+    // If previous game was won, start fresh instead of showing win overlay
+    if (saved?.hasWon) return dealGame();
+    return saved ?? dealGame();
   });
 
   // Persist state to localStorage on every change

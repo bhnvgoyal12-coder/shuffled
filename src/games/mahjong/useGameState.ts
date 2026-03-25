@@ -93,7 +93,9 @@ function saveState(state: MahjongGameState): void {
 
 export function useMahjongGameState() {
   const [state, dispatch] = useReducer(gameReducer, null, () => {
-    return loadSavedState() ?? dealGame();
+    const saved = loadSavedState();
+    if (saved?.hasWon) return dealGame();
+    return saved ?? dealGame();
   });
 
   useEffect(() => {

@@ -201,7 +201,9 @@ export function useSpiderGameState() {
   const { settings } = useSettings();
 
   const [state, dispatch] = useReducer(gameReducer, null, () => {
-    return loadSavedState() ?? dealSpiderGame(settings.spiderSuitCount);
+    const saved = loadSavedState();
+    if (saved?.hasWon) return dealSpiderGame(settings.spiderSuitCount);
+    return saved ?? dealSpiderGame(settings.spiderSuitCount);
   });
 
   useEffect(() => {

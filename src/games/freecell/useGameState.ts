@@ -165,7 +165,9 @@ function saveState(state: FreeCellGameState): void {
 
 export function useFreeCellGameState() {
   const [state, dispatch] = useReducer(gameReducer, null, () => {
-    return loadSavedState() ?? dealFreeCellGame();
+    const saved = loadSavedState();
+    if (saved?.hasWon) return dealFreeCellGame();
+    return saved ?? dealFreeCellGame();
   });
 
   useEffect(() => {
