@@ -57,9 +57,12 @@ export function useGameTimer({ gameType, isGameOver, timerEnabled }: UseGameTime
   useEffect(() => { elapsedRef.current = elapsedSeconds; }, [elapsedSeconds]);
 
   // Save WITHOUT timestamp on unmount → timer freezes when leaving
+  // Skip if timer was just reset (to avoid overwriting the 0 with stale ref)
   useEffect(() => {
     return () => {
-      saveTimer(gameType, elapsedRef.current, false);
+      if (!wasReset.current) {
+        saveTimer(gameType, elapsedRef.current, false);
+      }
     };
   }, [gameType]);
 
@@ -90,8 +93,12 @@ export function useGameTimer({ gameType, isGameOver, timerEnabled }: UseGameTime
     }
   }, [isGameOver, gameType, elapsedSeconds]);
 
+  const wasReset = useRef(false);
+
   const resetTimer = useCallback(() => {
     setElapsedSeconds(0);
+    elapsedRef.current = 0;
+    wasReset.current = true;
     saveTimer(gameType, 0, true);
   }, [gameType]);
 
