@@ -13,7 +13,7 @@ import { WinOverlay } from '../../components/WinOverlay';
 import { SettingsModal } from '../../components/SettingsModal';
 import { HowToPlayModal } from '../../components/HowToPlayModal';
 
-import { useInterstitialAd } from '../../components/AdInterstitial';
+
 import { useSettings } from '../../contexts/SettingsContext';
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
@@ -28,7 +28,7 @@ export function Board({ onGoHome }: SpiderBoardProps) {
   const { state, newGame, dealStock, moveCards, undo, selectCard } = useSpiderGameState();
   const { settings } = useSettings();
   const { play } = useSound();
-  const { maybeShowInterstitial } = useInterstitialAd();
+
   const { elapsedSeconds, resetTimer, formattedTime } = useGameTimer({
     gameType: 'spider',
     isGameOver: state.hasWon,
@@ -36,12 +36,11 @@ export function Board({ onGoHome }: SpiderBoardProps) {
   });
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
-  const newGameWithAd = useCallback(() => {
+  const handleNewGame = useCallback(() => {
     trackNewGame('spider');
-    maybeShowInterstitial();
     newGame();
     resetTimer();
-  }, [maybeShowInterstitial, newGame, resetTimer]);
+  }, [newGame, resetTimer]);
 
   const moveCardsWithSound = useCallback(
     (from: string, to: string, cardIndex: number) => {
@@ -120,7 +119,7 @@ export function Board({ onGoHome }: SpiderBoardProps) {
         score={displayScore}
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={false}
-        onNewGame={newGameWithAd}
+        onNewGame={handleNewGame}
         onUndo={() => { trackUndo('spider'); undo(); }}
         onAutoComplete={() => {}}
         onOpenSettings={() => { trackOpenSettings('spider'); setSettingsOpen(true); }}
@@ -199,13 +198,13 @@ export function Board({ onGoHome }: SpiderBoardProps) {
       )}
 
       {state.hasWon && (
-        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={() => { setIsNewBest(false); newGameWithAd(); }} onGoHome={onGoHome} />
+        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={() => { setIsNewBest(false); handleNewGame(); }} onGoHome={onGoHome} />
       )}
 
       {settingsOpen && (
         <SettingsModal
           onClose={() => setSettingsOpen(false)}
-          onNewGame={() => { newGameWithAd(); setSettingsOpen(false); }}
+          onNewGame={() => { handleNewGame(); setSettingsOpen(false); }}
           gameType="spider"
         />
       )}

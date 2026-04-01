@@ -8,7 +8,7 @@ import { WinOverlay } from '../../components/WinOverlay';
 import { SettingsModal } from '../../components/SettingsModal';
 import { HowToPlayModal } from '../../components/HowToPlayModal';
 
-import { useInterstitialAd } from '../../components/AdInterstitial';
+
 import { useSettings } from '../../contexts/SettingsContext';
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
@@ -23,7 +23,7 @@ export function Board({ onGoHome }: MahjongBoardProps) {
   const { state, newGame, selectTile, shuffle, undo } = useMahjongGameState();
   const { settings } = useSettings();
   const { play } = useSound();
-  const { maybeShowInterstitial } = useInterstitialAd();
+
   const { elapsedSeconds, resetTimer, formattedTime } = useGameTimer({
     gameType: 'mahjong',
     isGameOver: state.hasWon || state.hasLost,
@@ -31,12 +31,11 @@ export function Board({ onGoHome }: MahjongBoardProps) {
   });
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
-  const newGameWithAd = useCallback(() => {
+  const handleNewGame = useCallback(() => {
     trackNewGame('mahjong');
-    maybeShowInterstitial();
     newGame();
     resetTimer();
-  }, [maybeShowInterstitial, newGame, resetTimer]);
+  }, [newGame, resetTimer]);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -113,7 +112,7 @@ export function Board({ onGoHome }: MahjongBoardProps) {
         score={displayScore}
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={false}
-        onNewGame={newGameWithAd}
+        onNewGame={handleNewGame}
         onUndo={() => { trackUndo('mahjong'); undo(); }}
         onAutoComplete={() => {}}
         onOpenSettings={() => { trackOpenSettings('mahjong'); setSettingsOpen(true); }}
@@ -210,7 +209,7 @@ export function Board({ onGoHome }: MahjongBoardProps) {
                   padding: 'clamp(8px, 2vw, 12px) clamp(16px, 4vw, 24px)',
                   fontSize: 'clamp(13px, 3vw, 16px)',
                 }}
-                onClick={newGameWithAd}
+                onClick={handleNewGame}
               >
                 New Game
               </button>
@@ -220,13 +219,13 @@ export function Board({ onGoHome }: MahjongBoardProps) {
       )}
 
       {state.hasWon && (
-        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={() => { setIsNewBest(false); newGameWithAd(); }} onGoHome={onGoHome} />
+        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={() => { setIsNewBest(false); handleNewGame(); }} onGoHome={onGoHome} />
       )}
 
       {settingsOpen && (
         <SettingsModal
           onClose={() => setSettingsOpen(false)}
-          onNewGame={() => { newGameWithAd(); setSettingsOpen(false); }}
+          onNewGame={() => { handleNewGame(); setSettingsOpen(false); }}
           gameType="mahjong"
         />
       )}

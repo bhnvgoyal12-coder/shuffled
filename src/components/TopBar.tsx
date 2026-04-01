@@ -181,7 +181,7 @@ export const TopBar = React.memo(function TopBar({
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[15000] bg-black/70 text-white text-sm font-medium rounded-full backdrop-blur-sm pointer-events-none animate-[fadeIn_0.15s_ease]"
           style={{
-            bottom: 'calc(var(--ad-banner-height, 50px) + 16px)',
+            bottom: '16px',
             padding: '6px 20px',
           }}
         >

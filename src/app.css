@@ -16,7 +16,6 @@
   --card-center-font-size: clamp(26px, 7vw, 40px);
   --card-pip-size: clamp(10px, 2.8vw, 16px);
   --board-padding: clamp(4px, 1.5vw, 16px);
-  --ad-banner-height: 50px;
   --ws-cell-size: clamp(30px, 8vw, 44px);
 
   /* Card back theme (set dynamically by SettingsContext) */

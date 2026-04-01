@@ -22,7 +22,7 @@ import { WinOverlay } from '../../components/WinOverlay';
 import { SettingsModal } from '../../components/SettingsModal';
 import { HowToPlayModal } from '../../components/HowToPlayModal';
 
-import { useInterstitialAd } from '../../components/AdInterstitial';
+
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
 import { trackNewGame, trackGameWon, trackUndo, trackAutoComplete, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
@@ -39,7 +39,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
     useGameState();
   const { settings } = useSettings();
   const { play } = useSound();
-  const { maybeShowInterstitial } = useInterstitialAd();
+
   const { elapsedSeconds, resetTimer, formattedTime } = useGameTimer({
     gameType: 'klondike',
     isGameOver: state.hasWon,
@@ -47,14 +47,11 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
   });
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
-  // Wrap newGame so every trigger (TopBar, WinOverlay, Settings) goes
-  // through the interstitial counter — ad shows every 3rd new game.
-  const newGameWithAd = useCallback(() => {
+  const handleNewGame = useCallback(() => {
     trackNewGame('klondike');
-    maybeShowInterstitial();
     newGame();
     resetTimer();
-  }, [maybeShowInterstitial, newGame, resetTimer]);
+  }, [newGame, resetTimer]);
 
   // Wrap moveCards to play sound on drag-drop
   const moveCardsWithSound = useCallback(
@@ -193,7 +190,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
         score={displayScore}
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={showAutoComplete}
-        onNewGame={newGameWithAd}
+        onNewGame={handleNewGame}
         onUndo={() => { trackUndo('klondike'); undo(); }}
         onAutoComplete={startAutoComplete}
         onOpenSettings={() => { trackOpenSettings('klondike'); setSettingsOpen(true); }}
@@ -305,7 +302,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
           score={displayScore}
           time={settings.timerEnabled ? formattedTime : undefined}
           isNewBest={isNewBest}
-          onNewGame={() => { setIsNewBest(false); newGameWithAd(); }}
+          onNewGame={() => { setIsNewBest(false); handleNewGame(); }}
           onGoHome={onGoHome}
         />
       )}
@@ -313,7 +310,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
       {settingsOpen && (
         <SettingsModal
           onClose={() => setSettingsOpen(false)}
-          onNewGame={() => { newGameWithAd(); setSettingsOpen(false); }}
+          onNewGame={() => { handleNewGame(); setSettingsOpen(false); }}
           gameType="klondike"
         />
       )}

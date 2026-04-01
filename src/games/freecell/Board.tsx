@@ -23,7 +23,7 @@ import { WinOverlay } from '../../components/WinOverlay';
 import { SettingsModal } from '../../components/SettingsModal';
 import { HowToPlayModal } from '../../components/HowToPlayModal';
 
-import { useInterstitialAd } from '../../components/AdInterstitial';
+
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
 import { trackNewGame, trackGameWon, trackUndo, trackAutoComplete, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
@@ -39,7 +39,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
   const { state, newGame, moveCards, undo, selectCard } = useFreeCellGameState();
   const { settings } = useSettings();
   const { play } = useSound();
-  const { maybeShowInterstitial } = useInterstitialAd();
+
   const { elapsedSeconds, resetTimer, formattedTime } = useGameTimer({
     gameType: 'freecell',
     isGameOver: state.hasWon,
@@ -47,12 +47,11 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
   });
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
-  const newGameWithAd = useCallback(() => {
+  const handleNewGame = useCallback(() => {
     trackNewGame('freecell');
-    maybeShowInterstitial();
     newGame();
     resetTimer();
-  }, [maybeShowInterstitial, newGame, resetTimer]);
+  }, [newGame, resetTimer]);
 
   // Toast state for supermove rejection
   const [toast, setToast] = useState<string | null>(null);
@@ -214,7 +213,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
         score={displayScore}
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={showAutoComplete}
-        onNewGame={newGameWithAd}
+        onNewGame={handleNewGame}
         onUndo={() => { trackUndo('freecell'); undo(); }}
         onAutoComplete={startAutoComplete}
         onOpenSettings={() => { trackOpenSettings('freecell'); setSettingsOpen(true); }}
@@ -303,13 +302,13 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
       )}
 
       {state.hasWon && (
-        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={() => { setIsNewBest(false); newGameWithAd(); }} onGoHome={onGoHome} />
+        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={() => { setIsNewBest(false); handleNewGame(); }} onGoHome={onGoHome} />
       )}
 
       {settingsOpen && (
         <SettingsModal
           onClose={() => setSettingsOpen(false)}
-          onNewGame={() => { newGameWithAd(); setSettingsOpen(false); }}
+          onNewGame={() => { handleNewGame(); setSettingsOpen(false); }}
           gameType="freecell"
         />
       )}
@@ -322,7 +321,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
       {toast && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[15000] bg-black/70 text-white text-sm font-medium rounded-full backdrop-blur-sm pointer-events-none animate-[fadeIn_0.15s_ease]"
-          style={{ bottom: 'calc(var(--ad-banner-height, 50px) + 16px)', padding: '6px 20px' }}
+          style={{ bottom: '16px', padding: '6px 20px' }}
         >
           {toast}
         </div>

@@ -7,7 +7,7 @@ import { WordList } from './WordList';
 import { TopBar } from '../../components/TopBar';
 import { HowToPlayModal } from '../../components/HowToPlayModal';
 import { SettingsModal } from '../../components/SettingsModal';
-import { useInterstitialAd } from '../../components/AdInterstitial';
+
 import { useSettings } from '../../contexts/SettingsContext';
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { useSound } from '../../hooks/useSound';
@@ -23,7 +23,7 @@ export function Board({ onGoHome }: WordSearchBoardProps) {
   const { state, newGame, selectWord, nextLevel, undo } = useWordSearchGameState();
   const { settings } = useSettings();
   const { play } = useSound();
-  const { maybeShowInterstitial } = useInterstitialAd();
+
   const { elapsedSeconds, resetTimer, formattedTime } = useGameTimer({
     gameType: 'wordsearch',
     isGameOver: state.hasWon,
@@ -33,12 +33,11 @@ export function Board({ onGoHome }: WordSearchBoardProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
-  const newGameWithAd = useCallback(() => {
+  const handleNewGame = useCallback(() => {
     trackNewGame('wordsearch');
-    maybeShowInterstitial();
     newGame();
     resetTimer();
-  }, [maybeShowInterstitial, newGame, resetTimer]);
+  }, [newGame, resetTimer]);
 
   const handleUndo = useCallback(() => {
     trackUndo('wordsearch');
@@ -118,7 +117,7 @@ export function Board({ onGoHome }: WordSearchBoardProps) {
         score={state.score}
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={false}
-        onNewGame={newGameWithAd}
+        onNewGame={handleNewGame}
         onUndo={handleUndo}
         onAutoComplete={() => {}}
         onOpenSettings={() => { trackOpenSettings('wordsearch'); setSettingsOpen(true); }}
@@ -244,7 +243,7 @@ export function Board({ onGoHome }: WordSearchBoardProps) {
       )}
 
       {settingsOpen && (
-        <SettingsModal gameType="wordsearch" onClose={() => setSettingsOpen(false)} onNewGame={() => { newGameWithAd(); setSettingsOpen(false); }} />
+        <SettingsModal gameType="wordsearch" onClose={() => setSettingsOpen(false)} onNewGame={() => { handleNewGame(); setSettingsOpen(false); }} />
       )}
       {helpOpen && (
         <HowToPlayModal gameType="wordsearch" onClose={() => setHelpOpen(false)} />
