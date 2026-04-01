@@ -11,6 +11,8 @@ import {
   findSafeFreeCellAutoMoves,
   getValidFreeCellDropTargets,
   getPileCards,
+  getMoveRejectionReason,
+  getMaxMovableCards,
 } from './gameLogic';
 import { SUIT_SYMBOLS } from '../../constants';
 import { TopBar } from '../../components/TopBar';
@@ -52,12 +54,31 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
     resetTimer();
   }, [maybeShowInterstitial, newGame, resetTimer]);
 
+  // Toast state for supermove rejection
+  const [toast, setToast] = useState<string | null>(null);
+  const [shakeKey, setShakeKey] = useState(0);
+  const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showSupermoveToast = useCallback((maxCards: number) => {
+    if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    setToast(`Can only move ${maxCards} card${maxCards === 1 ? '' : 's'} — free up cells or columns`);
+    setShakeKey(k => k + 1);
+    toastTimeout.current = setTimeout(() => setToast(null), 2500);
+  }, []);
+
   const moveCardsWithSound = useCallback(
     (from: string, to: string, cardIndex: number) => {
+      const reason = getMoveRejectionReason(state, from as FreeCellPileId, to as FreeCellPileId, cardIndex);
+      if (reason === 'supermove') {
+        const toIdx = parseInt(to.split('-')[1]);
+        const toEmpty = state.tableau[toIdx]?.length === 0;
+        showSupermoveToast(getMaxMovableCards(state, toEmpty));
+        return;
+      }
       moveCards(from as FreeCellPileId, to as FreeCellPileId, cardIndex);
       play('cardPlace');
     },
-    [moveCards, play]
+    [moveCards, play, state, showSupermoveToast]
   );
 
   const {
@@ -98,18 +119,38 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
       }
 
       lastTap.current = { pileId: id, cardIndex, time: now };
+
+      // Check for supermove rejection before selecting
+      if (state.selectedCard) {
+        const reason = getMoveRejectionReason(state, state.selectedCard.pileId, id, state.selectedCard.cardIndex);
+        if (reason === 'supermove') {
+          const toIdx = parseInt(id.split('-')[1]);
+          const toEmpty = id.startsWith('tableau-') && state.tableau[toIdx]?.length === 0;
+          showSupermoveToast(getMaxMovableCards(state, toEmpty));
+          return;
+        }
+      }
+
       selectCard(id, cardIndex);
     },
-    [selectCard, state, moveCards, play]
+    [selectCard, state, moveCards, play, showSupermoveToast]
   );
 
   const handlePileClick = useCallback(
     (pileId: string) => {
       if (state.selectedCard) {
-        selectCard(pileId as FreeCellPileId, 0);
+        const id = pileId as FreeCellPileId;
+        const reason = getMoveRejectionReason(state, state.selectedCard.pileId, id, state.selectedCard.cardIndex);
+        if (reason === 'supermove') {
+          const toIdx = parseInt(id.split('-')[1]);
+          const toEmpty = id.startsWith('tableau-') && state.tableau[toIdx]?.length === 0;
+          showSupermoveToast(getMaxMovableCards(state, toEmpty));
+          return;
+        }
+        selectCard(id, 0);
       }
     },
-    [state.selectedCard, selectCard]
+    [state.selectedCard, state, selectCard, showSupermoveToast]
   );
 
   // Auto-complete
@@ -184,8 +225,19 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
         layoutClass="topbar-layout-8"
       />
 
+      {/* Toast for supermove rejection */}
+      {toast && (
+        <div
+          key={shakeKey}
+          className="mx-auto px-4 py-2 rounded-lg bg-black/70 text-white text-center backdrop-blur-sm animate-[fadeIn_0.2s_ease]"
+          style={{ fontSize: 'clamp(11px, 2.8vw, 14px)', maxWidth: '90%', marginBottom: 'clamp(4px, 1vw, 8px)' }}
+        >
+          {toast}
+        </div>
+      )}
+
       {/* Top row: 4 free cells + 4 foundations */}
-      <div className="board-grid-8 mx-auto w-full justify-center">
+      <div key={shakeKey} className={`board-grid-8 mx-auto w-full justify-center${toast ? ' animate-shake' : ''}`}>
         {state.freeCells.map((card, i) => (
           <FreeCellPile
             key={`fc-${i}`}

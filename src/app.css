@@ -163,6 +163,7 @@ body::before {
 
 .freecell-game {
   --card-width: clamp(40px, 11vw, 75px);
+  --tableau-offset: clamp(30px, 6.5vw, 48px);
 }
 
 .mahjong-game {
@@ -235,4 +236,17 @@ body::before {
 
 .animate-card-flip {
   animation: cardFlip 0.45s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(5px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
 }

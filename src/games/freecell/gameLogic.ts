@@ -74,6 +74,53 @@ export function getPileCards(state: FreeCellGameState, pileId: FreeCellPileId): 
  * Formula: (emptyFreeCells + 1) × 2^(emptyTableauCols)
  * When moving to an empty tableau, that empty slot doesn't count.
  */
+/**
+ * Returns 'supermove' if the move would be valid except for the supermove limit,
+ * null if the move is valid or invalid for other reasons.
+ */
+export function getMoveRejectionReason(
+  state: FreeCellGameState,
+  from: FreeCellPileId,
+  to: FreeCellPileId,
+  cardIndex: number
+): 'supermove' | null {
+  if (from === to) return null;
+  const sourcePile = getPileCards(state, from);
+  if (cardIndex < 0 || cardIndex >= sourcePile.length) return null;
+  const movingCards = sourcePile.slice(cardIndex);
+  if (movingCards.length <= 1) return null; // single card — never a supermove issue
+
+  // Only tableau destinations can have supermove limits
+  if (!to.startsWith('tableau-')) return null;
+
+  // Must be a valid descending alternating-color sequence
+  for (let i = 0; i < movingCards.length - 1; i++) {
+    const curr = movingCards[i];
+    const next = movingCards[i + 1];
+    if (curr.color === next.color) return null;
+    if (getRankValue(curr.rank) !== getRankValue(next.rank) + 1) return null;
+  }
+
+  const tabIdx = parseInt(to.split('-')[1]);
+  const targetPile = state.tableau[tabIdx];
+  const toEmpty = targetPile.length === 0;
+
+  // Check if the stack placement would be valid (ignoring supermove)
+  if (!toEmpty) {
+    const topCard = targetPile[targetPile.length - 1];
+    const movingCard = movingCards[0];
+    if (movingCard.color === topCard.color || getRankValue(movingCard.rank) !== getRankValue(topCard.rank) - 1) {
+      return null; // invalid for other reasons
+    }
+  }
+
+  // If we get here, placement is valid — check if supermove blocks it
+  const maxMovable = getMaxMovableCards(state, toEmpty);
+  if (movingCards.length > maxMovable) return 'supermove';
+
+  return null;
+}
+
 export function getMaxMovableCards(state: FreeCellGameState, toEmpty = false): number {
   const emptyFreeCells = state.freeCells.filter(c => c === null).length;
   let emptyTableau = state.tableau.filter(t => t.length === 0).length;
