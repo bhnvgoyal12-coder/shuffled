@@ -56,14 +56,12 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
 
   // Toast state for supermove rejection
   const [toast, setToast] = useState<string | null>(null);
-  const [shakeKey, setShakeKey] = useState(0);
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showSupermoveToast = useCallback((maxCards: number) => {
     if (toastTimeout.current) clearTimeout(toastTimeout.current);
-    setToast(`Can only move ${maxCards} card${maxCards === 1 ? '' : 's'} — free up cells or columns`);
-    setShakeKey(k => k + 1);
-    toastTimeout.current = setTimeout(() => setToast(null), 2500);
+    setToast(`Can only move ${maxCards} card${maxCards === 1 ? '' : 's'}`);
+    toastTimeout.current = setTimeout(() => setToast(null), 2000);
   }, []);
 
   const moveCardsWithSound = useCallback(
@@ -225,19 +223,8 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
         layoutClass="topbar-layout-8"
       />
 
-      {/* Toast for supermove rejection */}
-      {toast && (
-        <div
-          key={shakeKey}
-          className="mx-auto px-4 py-2 rounded-lg bg-black/70 text-white text-center backdrop-blur-sm animate-[fadeIn_0.2s_ease]"
-          style={{ fontSize: 'clamp(11px, 2.8vw, 14px)', maxWidth: '90%', marginBottom: 'clamp(4px, 1vw, 8px)' }}
-        >
-          {toast}
-        </div>
-      )}
-
       {/* Top row: 4 free cells + 4 foundations */}
-      <div key={shakeKey} className={`board-grid-8 mx-auto w-full justify-center${toast ? ' animate-shake' : ''}`}>
+      <div className="board-grid-8 mx-auto w-full justify-center">
         {state.freeCells.map((card, i) => (
           <FreeCellPile
             key={`fc-${i}`}
@@ -329,6 +316,16 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
 
       {helpOpen && (
         <HowToPlayModal gameType="freecell" onClose={() => setHelpOpen(false)} />
+      )}
+
+      {/* Supermove rejection toast */}
+      {toast && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-[15000] bg-black/70 text-white text-sm font-medium rounded-full backdrop-blur-sm pointer-events-none animate-[fadeIn_0.15s_ease]"
+          style={{ bottom: 'calc(var(--ad-banner-height, 50px) + 16px)', padding: '6px 20px' }}
+        >
+          {toast}
+        </div>
       )}
     </div>
   );
