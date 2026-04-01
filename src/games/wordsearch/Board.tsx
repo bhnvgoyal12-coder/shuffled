@@ -127,7 +127,7 @@ export function Board({ onGoHome }: WordSearchBoardProps) {
             className="text-white/70 font-semibold whitespace-nowrap"
             style={{ fontSize: 'clamp(11px, 2.5vw, 13px)' }}
           >
-            Lv.{state.currentLevel} &middot; {wordsRemaining} left
+            Lv.{state.currentLevel}
           </span>
         }
       />
