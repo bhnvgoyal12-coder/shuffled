@@ -163,7 +163,7 @@ body::before {
 
 .freecell-game {
   --card-width: clamp(40px, 11vw, 75px);
-  --tableau-offset: clamp(24px, 4.5vw, 34px);
+  --tableau-offset: clamp(22px, 4vw, 30px);
 }
 
 .mahjong-game {
