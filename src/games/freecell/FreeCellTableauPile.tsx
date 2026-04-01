@@ -81,7 +81,15 @@ export const FreeCellTableauPile = React.memo(function FreeCellTableauPile({
 
 function getCssVarPx(name: string, fallback: number): number {
   if (typeof document === 'undefined') return fallback;
-  const val = getComputedStyle(document.documentElement).getPropertyValue(name);
-  const num = parseFloat(val);
-  return isNaN(num) ? fallback : num;
+  // CSS custom properties return raw expressions (e.g. clamp(...)) from getComputedStyle.
+  // To resolve to pixels, temporarily apply the var to a real property on a hidden element.
+  const el = document.querySelector('.freecell-game') ?? document.documentElement;
+  const probe = document.createElement('div');
+  probe.style.position = 'absolute';
+  probe.style.visibility = 'hidden';
+  probe.style.height = `var(${name})`;
+  el.appendChild(probe);
+  const px = probe.getBoundingClientRect().height;
+  probe.remove();
+  return px || fallback;
 }

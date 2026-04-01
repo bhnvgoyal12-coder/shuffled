@@ -51,6 +51,7 @@ export function useGameTimer({ gameType, isGameOver, timerEnabled }: UseGameTime
   );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(elapsedSeconds);
+  const wasReset = useRef(false);
   const isActive = timerEnabled && !isGameOver;
 
   // Keep ref in sync for cleanup closure
@@ -92,8 +93,6 @@ export function useGameTimer({ gameType, isGameOver, timerEnabled }: UseGameTime
       saveTimer(gameType, elapsedSeconds, false);
     }
   }, [isGameOver, gameType, elapsedSeconds]);
-
-  const wasReset = useRef(false);
 
   const resetTimer = useCallback(() => {
     setElapsedSeconds(0);
