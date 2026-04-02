@@ -47,6 +47,10 @@ html, body, #root {
   min-height: 100dvh;
 }
 
+html {
+  background: #000;
+}
+
 body {
   background: radial-gradient(60.25% 50% at 50% 50%, #1C3623 0%, #000 74.13%);;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
