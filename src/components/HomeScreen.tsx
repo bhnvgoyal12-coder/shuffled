@@ -1,7 +1,4 @@
-import { useState } from 'react';
 import type { GameType } from '../types';
-import { HowToPlayModal } from './HowToPlayModal';
-import { trackOpenHelp } from '../utils/analytics';
 import { getBestScore } from '../utils/highScores';
 import { ENABLED_GAMES } from '../config/enabledGames';
 import { GameCard, type GameCardVariant } from './card/card';
@@ -52,7 +49,6 @@ const STORAGE_KEYS: Record<GameType, string> = {
 };
 
 export function HomeScreen({ onSelectGame }: HomeScreenProps) {
-  const [helpGame, setHelpGame] = useState<GameType | null>(null);
   const visibleGames = GAMES.filter(g => ENABLED_GAMES.includes(g.type));
 
   return (
@@ -61,25 +57,18 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
       style={{ padding: 'clamp(16px, 4vw, 32px) clamp(12px, 3vw, 24px)' }}
     >
       {/* Logo */}
-      <div className="text-center mb-4" style={{ marginTop: 'clamp(12px, 3vh, 32px)' }}>
-        {/* Fanned card suits */}
-        <div className="flex items-center justify-center mb-2" style={{ gap: 'clamp(2px, 0.8vw, 6px)' }}>
-          {(['#e53935', '#333', '#e53935', '#333'] as const).map((color, i) => (
-            <div
-              key={i}
-              className="bg-white/95 rounded-[3px] flex items-center justify-center shadow-[0_2px_6px_rgba(0,0,0,0.2)]"
-              style={{
-                width: 'clamp(22px, 5.5vw, 30px)',
-                height: 'clamp(30px, 7.5vw, 42px)',
-                fontSize: 'clamp(14px, 3.5vw, 20px)',
-                color,
-                transform: `rotate(${(i - 1.5) * 6}deg)`,
-              }}
-            >
-              {['\u2665', '\u2663', '\u2666', '\u2660'][i]}
-            </div>
-          ))}
-        </div>
+      <div className="text-center mb-4" style={{ marginBottom: 'clamp(20px, 3vh, 40px)' }}>
+        <img
+          src="/logo.png"
+          alt="Shuffled — fanned playing cards"
+          className="mx-auto block"
+          style={{
+            width: 'clamp(150px, 72vw, 200px)',
+            height: 'auto',
+            marginBottom: '4px',
+          }}
+          loading="eager"
+        />
         <h1
           className="text-white font-extrabold italic m-0"
           style={{
@@ -119,19 +108,10 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
               playLabel={hasSave ? 'Continue' : 'Play now'}
               bestScore={best?.score}
               onPlay={() => onSelectGame(game.type)}
-              onHowToPlay={(e) => {
-                e.preventDefault();
-                trackOpenHelp(game.type);
-                setHelpGame(game.type);
-              }}
             />
           );
         })}
       </div>
-
-      {helpGame && (
-        <HowToPlayModal gameType={helpGame} onClose={() => setHelpGame(null)} />
-      )}
     </div>
   );
 }

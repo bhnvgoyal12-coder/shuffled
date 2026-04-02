@@ -39,14 +39,6 @@
   grid-column: span 2;
 }
 
-.variantSmall .body {
-  padding: 8px 16px 16px 16px;
-}
-
-.variantMedium .body {
-  padding: 10px 20px 20px 20px;
-}
-
 .variantMedium .playBtnCompact {
   min-width: clamp(96px, 26vw, 132px);
 }
@@ -96,33 +88,49 @@
   box-sizing: border-box;
 }
 
+
+
 .body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: clamp(16px, 1.2vw, 20px);
+}
+
+.content {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0;
-  padding: 8px 20px 20px 20px;
   gap: clamp(4px, 1.2vw, 8px);
+  min-height: 0;
+  margin: 0px;
 }
-
+/* Hero / Small / Medium — layout + padding for each card size */
 .bodyHero {
+  flex-direction: column;
   align-items: center;
   text-align: center;
+  padding: 8px 20px 20px 20px;
 }
 
-.bodyCompact {
+.bodySmall {
+  flex-direction: column;
   align-items: flex-start;
   text-align: left;
+  padding: 8px 16px 16px 16px;
 }
 
-.footerRow {
-  display: flex;
+.bodyMedium {
   flex-direction: row;
-  align-items: center;
+  text-align: left;
+  align-items: flex-end;
   justify-content: space-between;
-  width: 100%;
-  margin-top: clamp(4px, 1vw, 8px);
-  gap: clamp(8px, 2vw, 12px);
+  padding: 10px 20px 20px 20px;
+}
+
+/* Lets the text column shrink/wrap instead of forcing the button off-axis */
+.bodyMedium .content {
+  min-width: 0;
 }
 
 .title {
@@ -134,7 +142,7 @@
 /* Hero: larger display title, centered context */
 .titleHero {
   margin-top: clamp(8px, 2vw, 14px);
-  font-size: clamp(18px, 4.5vw, 24px);
+  font-size: clamp(28px, 4.5vw, 36px);
   line-height: 1.12;
   letter-spacing: -0.035em;
   text-wrap: balance;
@@ -143,36 +151,38 @@
 /* Compact (small + medium): tighter, left-aligned grid */
 .titleCompact {
   margin-top: clamp(4px, 1.2vw, 8px);
-  font-size: clamp(12px, 3.1vw, 17px);
+  font-size: clamp(18px, 3.1vw, 20px);
   line-height: 1.22;
   letter-spacing: -0.02em;
 }
 
 .variantMedium .titleCompact {
-  font-size: clamp(13px, 3.3vw, 18px);
+  font-size: clamp(18px, 3.3vw, 20px);
   margin-top: clamp(5px, 1.4vw, 10px);
 }
 
 .subtitle {
   margin: 0;
-  font-size: clamp(9px, 2.1vw, 11px);
+  font-size: clamp(12px, 2.1vw, 14px);
   color: rgba(255, 255, 255, 0.42);
   line-height: 1.35;
   max-width: 100%;
 }
 
 .best {
+  width: fit-content;
   margin: 0;
   font-size: clamp(9px, 2vw, 11px);
   font-weight: 600;
-  color: #f57f17;
+  color: #5bc6ff;
+  background-color: #5bc6ff37;
+  padding: 4px 8px;
+  border-radius: 1.5rem;
 }
 
 .playBtn {
   border: 1px solid transparent;
   border-radius: 9999px;
-  padding: clamp(9px, 2.4vw, 12px) clamp(14px, 3vw, 18px);
-  font-size: clamp(11px, 2.6vw, 16px);
   font-weight: 700;
   font-family: inherit;
   color: #fff;
@@ -202,81 +212,21 @@
 .playBtnHero {
   margin-top: clamp(4px, 1vw, 8px);
   width: 100%;
+  font-size: clamp(20px, 2.6vw, 20px);
+  padding: clamp(12px, 2.4vw, 16px) clamp(24px, 3vw, 32px);
 }
 
 .playBtnCompact {
-  margin-top: 0;
   width: auto;
   flex-shrink: 0;
-  font-size: 12px;
-  padding: 8px 16px;
+  font-size: clamp(14px, 2.6vw, 16px);
+  padding: clamp(8px, 2.4vw, 12px) clamp(16px, 3vw, 24px);
 }
 
-.howTo {
-  display: inline-flex;
-  align-items: center;
-  margin: 0;
-  border: none;
-  background: none;
-  font-family: inherit;
-  font-weight: 600;
-  color: #c5b896;
-  cursor: pointer;
-  text-decoration: none;
-  text-underline-offset: 2px;
-  transition: color 0.15s ease;
+.bodySmall .playBtnCompact {
+  margin-top: clamp(4px, 1vw, 8px);
 }
 
-/* Hero: larger tap target, more legible under primary CTA */
-.howToHero {
-  align-self: center;
-  justify-content: center;
-  gap: 8px;
-  padding: clamp(6px, 1.6vw, 10px) clamp(12px, 3vw, 16px);
-  font-size: clamp(11px, 2.7vw, 14px);
-  letter-spacing: 0.02em;
-}
-
-.howToHero .howToIcon {
-  font-size: 1.22em;
-}
-
-/* Compact: fits footer row next to Play */
-.howToCompact {
-  justify-content: flex-start;
-  gap: 5px;
-  padding: 4px 4px 4px 0;
-  font-size: clamp(9px, 2.1vw, 11px);
-  letter-spacing: 0.01em;
-}
-
-.howToCompact .howToIcon {
-  font-size: 1.08em;
-}
-
-.variantMedium .howToCompact {
-  font-size: clamp(10px, 2.3vw, 12px);
-  gap: 6px;
-  padding: 4px 6px 4px 0;
-}
-
-.variantMedium .howToCompact .howToIcon {
-  font-size: 1.12em;
-}
-
-.howTo:hover {
-  color: #e8dcc8;
-  text-decoration: underline;
-  text-decoration-color: rgba(197, 184, 150, 0.4);
-}
-
-.howTo:focus-visible {
-  outline: 2px solid rgba(197, 184, 150, 0.5);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-.howToIcon {
-  flex-shrink: 0;
-  line-height: 1;
+.bodyMedium .playBtnCompact {
+  margin-top: 0;
 }
