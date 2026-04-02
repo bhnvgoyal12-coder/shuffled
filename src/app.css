@@ -81,7 +81,7 @@ body::before {
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 /* --- 3D Card Flip System --- */
