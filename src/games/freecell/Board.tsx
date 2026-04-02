@@ -320,7 +320,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
       {/* Supermove rejection toast */}
       {toast && (
         <div
-          className="fixed left-1/2 -translate-x-1/2 z-[15000] bg-black/70 text-white text-sm font-medium rounded-full backdrop-blur-sm pointer-events-none animate-[fadeIn_0.15s_ease]"
+          className="fixed left-1/2 -translate-x-1/2 z-[15000] bg-black/70 text-white text-sm font-medium rounded-full backdrop-blur-sm pointer-events-none animate-[fadeIn_0.15s_ease] whitespace-nowrap"
           style={{ bottom: '16px', padding: '6px 20px' }}
         >
           {toast}
