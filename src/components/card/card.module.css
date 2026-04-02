@@ -94,7 +94,7 @@
   display: flex;
   flex: 1;
   min-height: 0;
-  gap: clamp(16px, 1.2vw, 20px);
+  gap: clamp(8px, 1.2vw, 16px);
 }
 
 .content {
@@ -111,6 +111,11 @@
   align-items: center;
   text-align: center;
   padding: 8px 20px 20px 20px;
+}
+
+/* Pill is inside .content (column); without this it sits at flex-start */
+.bodyHero .best {
+  align-self: center;
 }
 
 .bodySmall {
