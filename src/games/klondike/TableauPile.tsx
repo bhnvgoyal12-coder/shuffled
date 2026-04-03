@@ -38,18 +38,25 @@ export const TableauPile = React.memo(function TableauPile({
     );
   }
 
-  // Calculate offsets
-  let totalOffset = 0;
-  const offsets: number[] = [];
+  // Build CSS calc() offsets so clamp() values resolve correctly
+  let faceUpCount = 0;
+  let faceDownCount = 0;
+  const cssOffsets: string[] = [];
   for (let i = 0; i < cards.length; i++) {
-    offsets.push(totalOffset);
+    if (i === 0) {
+      cssOffsets.push('0px');
+    } else {
+      cssOffsets.push(
+        `calc(${faceUpCount} * var(--tableau-offset) + ${faceDownCount} * var(--tableau-offset-down))`
+      );
+    }
     if (i < cards.length - 1) {
-      totalOffset += cards[i].faceUp
-        ? getCssVarPx('--tableau-offset', 22)
-        : getCssVarPx('--tableau-offset-down', 8);
+      if (cards[i].faceUp) faceUpCount++;
+      else faceDownCount++;
     }
   }
-  const totalHeight = totalOffset + getCssVarPx('--card-height', 112);
+  const lastIdx = cards.length - 1;
+  const totalHeightCss = `calc(${faceUpCount} * var(--tableau-offset) + ${faceDownCount} * var(--tableau-offset-down) + var(--card-height))`;
 
   // Check if any card at or above index is selected
   const isInSelectedStack = (i: number) =>
@@ -59,14 +66,14 @@ export const TableauPile = React.memo(function TableauPile({
     <div
       className="relative w-[var(--card-width)]"
       data-pile-id={pileId}
-      style={{ height: totalHeight }}
+      style={{ height: totalHeightCss }}
     >
       {cards.map((card, i) => (
         <CardComponent
           key={card.id}
           card={card}
           style={{
-            top: offsets[i],
+            top: cssOffsets[i],
             left: 0,
             zIndex: i + 1,
           }}
@@ -80,10 +87,3 @@ export const TableauPile = React.memo(function TableauPile({
     </div>
   );
 });
-
-function getCssVarPx(name: string, fallback: number): number {
-  if (typeof document === 'undefined') return fallback;
-  const val = getComputedStyle(document.documentElement).getPropertyValue(name);
-  const num = parseFloat(val);
-  return isNaN(num) ? fallback : num;
-}

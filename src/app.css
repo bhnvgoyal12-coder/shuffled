@@ -10,8 +10,8 @@
   --card-height: calc(var(--card-width) * 1.4);
   --card-radius: calc(var(--card-width) * 0.1);
   --card-gap: clamp(3px, 1vw, 14px);
-  --tableau-offset: clamp(22px, 4.5vw, 36px);
-  --tableau-offset-down: clamp(5px, 1.2vw, 10px);
+  --tableau-offset: clamp(19px, 4vw, 28px);
+  --tableau-offset-down: clamp(5px, 1.1vw, 8px);
   --card-font-size: clamp(14px, 3.5vw, 20px);
   --card-center-font-size: clamp(26px, 7vw, 40px);
   --card-pip-size: clamp(10px, 2.8vw, 16px);
