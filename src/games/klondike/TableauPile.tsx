@@ -55,7 +55,6 @@ export const TableauPile = React.memo(function TableauPile({
       else faceDownCount++;
     }
   }
-  const lastIdx = cards.length - 1;
   const totalHeightCss = `calc(${faceUpCount} * var(--tableau-offset) + ${faceDownCount} * var(--tableau-offset-down) + var(--card-height))`;
 
   // Check if any card at or above index is selected
