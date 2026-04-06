@@ -36,7 +36,7 @@ interface FreeCellBoardProps {
 }
 
 export function Board({ onGoHome }: FreeCellBoardProps) {
-  const { state, newGame, moveCards, undo, selectCard } = useFreeCellGameState();
+  const { state, newGame, moveCards, undo, selectCard, clearSelection } = useFreeCellGameState();
   const { settings } = useSettings();
   const { play } = useSound();
 
@@ -207,7 +207,15 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
   const validTargetSet = new Set(validTargets);
 
   return (
-    <div className="freecell-game flex-1 flex flex-col w-full overflow-y-auto">
+    <div
+      className="freecell-game flex-1 flex flex-col w-full overflow-y-auto"
+      onClick={(e) => {
+        if (!state.selectedCard) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-pile-id], [data-card-id]')) return;
+        clearSelection();
+      }}
+    >
       <TopBar
         moves={state.moves}
         score={displayScore}

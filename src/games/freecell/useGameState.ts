@@ -187,5 +187,7 @@ export function useFreeCellGameState() {
     []
   );
 
-  return { state, newGame, moveCards, undo, selectCard };
+  const clearSelection = useCallback(() => dispatch({ type: 'CLEAR_SELECTION' }), []);
+
+  return { state, newGame, moveCards, undo, selectCard, clearSelection };
 }
