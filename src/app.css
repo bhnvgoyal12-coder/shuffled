@@ -133,7 +133,8 @@ body::before {
 .board-grid, .board-grid-7 {
   display: grid;
   grid-template-columns: repeat(7, var(--card-width));
-  gap: var(--card-gap);
+  column-gap: var(--card-gap);
+  row-gap: clamp(12px, 3vh, 28px);
   padding: var(--board-padding);
   max-width: calc(7 * var(--card-width) + 6 * var(--card-gap) + 2 * var(--board-padding));
 }
