@@ -28,6 +28,8 @@ import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
 import { trackNewGame, trackGameWon, trackUndo, trackAutoComplete, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
 import { saveBestScore } from '../../utils/highScores';
+import { recordGamePlayed, recordGameWon } from '../../utils/gameStats';
+import { StatsModal } from '../../components/StatsModal';
 
 const DOUBLE_TAP_MS = 400;
 
@@ -47,8 +49,11 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
   });
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
+  const [statsOpen, setStatsOpen] = useState(false);
+
   const handleNewGame = useCallback(() => {
     trackNewGame('freecell');
+    recordGamePlayed('freecell');
     newGame();
     resetTimer();
   }, [newGame, resetTimer]);
@@ -193,6 +198,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
     if (state.hasWon && !prevWon.current) {
       play('winCelebration');
       trackGameWon('freecell', state.moves, elapsedSeconds, state.score);
+      recordGameWon('freecell', elapsedSeconds);
       const newBest = saveBestScore('freecell', {
         score: displayScore,
         moves: state.moves,
@@ -226,6 +232,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
         onAutoComplete={startAutoComplete}
         onOpenSettings={() => { trackOpenSettings('freecell'); setSettingsOpen(true); }}
         onOpenHelp={() => { trackOpenHelp('freecell'); setHelpOpen(true); }}
+        onOpenStats={() => setStatsOpen(true)}
         onGoHome={onGoHome}
         layoutClass="topbar-layout-8"
       />
@@ -323,6 +330,10 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
 
       {helpOpen && (
         <HowToPlayModal gameType="freecell" onClose={() => setHelpOpen(false)} />
+      )}
+
+      {statsOpen && (
+        <StatsModal gameType="freecell" onClose={() => setStatsOpen(false)} />
       )}
 
       {/* Supermove rejection toast */}

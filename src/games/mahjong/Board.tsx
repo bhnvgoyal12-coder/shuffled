@@ -14,6 +14,8 @@ import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
 import { trackNewGame, trackGameWon, trackGameLost, trackUndo, trackHint, trackShuffle, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
 import { saveBestScore } from '../../utils/highScores';
+import { recordGamePlayed, recordGameWon, recordGameLost as recordLost } from '../../utils/gameStats';
+import { StatsModal } from '../../components/StatsModal';
 
 interface MahjongBoardProps {
   onGoHome?: () => void;
@@ -31,8 +33,11 @@ export function Board({ onGoHome }: MahjongBoardProps) {
   });
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
+  const [statsOpen, setStatsOpen] = useState(false);
+
   const handleNewGame = useCallback(() => {
     trackNewGame('mahjong');
+    recordGamePlayed('mahjong');
     newGame();
     resetTimer();
   }, [newGame, resetTimer]);
@@ -87,6 +92,7 @@ export function Board({ onGoHome }: MahjongBoardProps) {
     if (state.hasWon && !prevWon.current) {
       play('winCelebration');
       trackGameWon('mahjong', state.moves, elapsedSeconds, state.score);
+      recordGameWon('mahjong', elapsedSeconds);
       const newBest = saveBestScore('mahjong', {
         score: displayScore,
         moves: state.moves,
@@ -97,6 +103,7 @@ export function Board({ onGoHome }: MahjongBoardProps) {
     }
     if (state.hasLost && !state.hasWon && !prevLost.current) {
       trackGameLost('mahjong', state.moves);
+      recordLost('mahjong');
     }
     prevWon.current = state.hasWon;
     prevLost.current = state.hasLost;
@@ -117,6 +124,7 @@ export function Board({ onGoHome }: MahjongBoardProps) {
         onAutoComplete={() => {}}
         onOpenSettings={() => { trackOpenSettings('mahjong'); setSettingsOpen(true); }}
         onOpenHelp={() => { trackOpenHelp('mahjong'); setHelpOpen(true); }}
+        onOpenStats={() => setStatsOpen(true)}
         onGoHome={onGoHome}
         extraControls={
           <div className="flex items-center gap-1.5">
@@ -232,6 +240,10 @@ export function Board({ onGoHome }: MahjongBoardProps) {
 
       {helpOpen && (
         <HowToPlayModal gameType="mahjong" onClose={() => setHelpOpen(false)} />
+      )}
+
+      {statsOpen && (
+        <StatsModal gameType="mahjong" onClose={() => setStatsOpen(false)} />
       )}
     </div>
   );

@@ -10,6 +10,7 @@ interface TopBarProps {
   onAutoComplete: () => void;
   onOpenSettings: () => void;
   onOpenHelp?: () => void;
+  onOpenStats?: () => void;
   onGoHome?: () => void;
   layoutClass?: string;
   extraControls?: React.ReactNode;
@@ -30,6 +31,7 @@ export const TopBar = React.memo(function TopBar({
   onAutoComplete,
   onOpenSettings,
   onOpenHelp,
+  onOpenStats,
   onGoHome,
   layoutClass = 'topbar-layout',
   extraControls,
@@ -157,6 +159,15 @@ export const TopBar = React.memo(function TopBar({
               </svg>
               {timerDisplay}
             </div>
+          )}
+          {onOpenStats && (
+            <button className={iconBtnClass} style={iconPad} onClick={onOpenStats} title="Stats" aria-label="Stats">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={iconSize}>
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+            </button>
           )}
           {onOpenHelp && (
             <button

@@ -27,6 +27,8 @@ import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
 import { trackNewGame, trackGameWon, trackUndo, trackAutoComplete, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
 import { saveBestScore } from '../../utils/highScores';
+import { recordGamePlayed, recordGameWon } from '../../utils/gameStats';
+import { StatsModal } from '../../components/StatsModal';
 
 const DOUBLE_TAP_MS = 400;
 
@@ -47,8 +49,11 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
   });
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
+  const [statsOpen, setStatsOpen] = useState(false);
+
   const handleNewGame = useCallback(() => {
     trackNewGame('klondike');
+    recordGamePlayed('klondike');
     newGame();
     resetTimer();
   }, [newGame, resetTimer]);
@@ -170,6 +175,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
     if (state.hasWon && !prevWon.current) {
       play('winCelebration');
       trackGameWon('klondike', state.moves, elapsedSeconds, state.score);
+      recordGameWon('klondike', elapsedSeconds);
       const newBest = saveBestScore('klondike', {
         score: displayScore,
         moves: state.moves,
@@ -195,6 +201,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
         onAutoComplete={startAutoComplete}
         onOpenSettings={() => { trackOpenSettings('klondike'); setSettingsOpen(true); }}
         onOpenHelp={() => { trackOpenHelp('klondike'); setHelpOpen(true); }}
+        onOpenStats={() => setStatsOpen(true)}
         onGoHome={onGoHome}
       />
       <div className="board-grid mx-auto w-full justify-center">
@@ -317,6 +324,10 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
 
       {helpOpen && (
         <HowToPlayModal gameType="klondike" onClose={() => setHelpOpen(false)} />
+      )}
+
+      {statsOpen && (
+        <StatsModal gameType="klondike" onClose={() => setStatsOpen(false)} />
       )}
     </div>
   );

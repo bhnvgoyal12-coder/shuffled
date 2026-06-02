@@ -13,6 +13,8 @@ import { useGameTimer } from '../../hooks/useGameTimer';
 import { useSound } from '../../hooks/useSound';
 import { trackNewGame, trackGameWon, trackUndo, trackOpenSettings, trackOpenHelp, trackWordFound, trackLevelComplete, trackNextLevel } from '../../utils/analytics';
 import { saveBestScore } from '../../utils/highScores';
+import { recordGamePlayed, recordGameWon } from '../../utils/gameStats';
+import { StatsModal } from '../../components/StatsModal';
 import type { GridPosition } from './types';
 
 interface WordSearchBoardProps {
@@ -32,9 +34,11 @@ export function Board({ onGoHome }: WordSearchBoardProps) {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const handleNewGame = useCallback(() => {
     trackNewGame('wordsearch');
+    recordGamePlayed('wordsearch');
     newGame();
     resetTimer();
   }, [newGame, resetTimer]);
@@ -92,6 +96,7 @@ export function Board({ onGoHome }: WordSearchBoardProps) {
     hasTrackedWin.current = true;
     saveBestScore('wordsearch', { score: state.score, moves: state.moves, elapsedSeconds, date: Date.now() });
     trackGameWon('wordsearch', state.moves, elapsedSeconds, state.score, { level: state.currentLevel });
+    recordGameWon('wordsearch', elapsedSeconds);
     trackLevelComplete(state.currentLevel, state.foundWords.length, state.score, elapsedSeconds);
   }
   if (!state.hasWon) hasTrackedWin.current = false;
@@ -119,6 +124,7 @@ export function Board({ onGoHome }: WordSearchBoardProps) {
         onAutoComplete={() => {}}
         onOpenSettings={() => { trackOpenSettings('wordsearch'); setSettingsOpen(true); }}
         onOpenHelp={() => { trackOpenHelp('wordsearch'); setHelpOpen(true); }}
+        onOpenStats={() => setStatsOpen(true)}
         onGoHome={onGoHome}
         extraControls={
           <span
@@ -244,6 +250,9 @@ export function Board({ onGoHome }: WordSearchBoardProps) {
       )}
       {helpOpen && (
         <HowToPlayModal gameType="wordsearch" onClose={() => setHelpOpen(false)} />
+      )}
+      {statsOpen && (
+        <StatsModal gameType="wordsearch" onClose={() => setStatsOpen(false)} />
       )}
     </div>
   );
