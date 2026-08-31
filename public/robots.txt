@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://shuffled.online/sitemap.xml
+
+Sitemap: https://www.solitairepro.in/sitemap.xml
+
