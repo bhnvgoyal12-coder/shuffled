@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Card } from '../types';
-import { SUIT_SYMBOLS, FOUNDATION_SUITS } from '../constants';
+import { FOUNDATION_SUITS } from '../constants';
 import { CardComponent } from './Card';
 import { CardMarkers } from './CardMarker';
 import { Placeholder } from './Placeholder';
@@ -10,6 +10,8 @@ interface FoundationPileProps {
   cards: Card[];
   isValidTarget: boolean;
   isSelected?: boolean;
+  /** Take a bow — the game has just been won */
+  celebrate?: boolean;
   onPointerDown?: (e: React.PointerEvent, pileId: string, cardIndex: number) => void;
   onCardClick: (pileId: string, cardIndex: number) => void;
   onPileClick: (pileId: string) => void;
@@ -20,18 +22,21 @@ export const FoundationPile = React.memo(function FoundationPile({
   cards,
   isValidTarget,
   isSelected = false,
+  celebrate = false,
   onPointerDown,
   onCardClick,
   onPileClick,
 }: FoundationPileProps) {
   const pileId = `foundation-${index}`;
-  const suitHint = SUIT_SYMBOLS[FOUNDATION_SUITS[index]];
+  // Cards the pile already held when it appeared don't get a landing flourish
+  const [countAtMount] = useState(cards.length);
+  const pileStyle = { '--pile-index': index } as React.CSSProperties;
 
   if (cards.length === 0) {
     return (
       <div className="relative w-[var(--card-width)] h-[var(--card-height)]" data-pile-id={pileId}>
         <Placeholder
-          hint={suitHint}
+          suit={FOUNDATION_SUITS[index]}
           isValidTarget={isValidTarget}
           onClick={() => onPileClick(pileId)}
         />
@@ -45,7 +50,11 @@ export const FoundationPile = React.memo(function FoundationPile({
   const cardBelow = topIndex > 0 ? cards[topIndex - 1] : null;
 
   return (
-    <div className="relative w-[var(--card-width)] h-[var(--card-height)]" data-pile-id={pileId}>
+    <div
+      className={`relative w-[var(--card-width)] h-[var(--card-height)] ${celebrate ? 'foundation-celebrate' : ''}`}
+      style={pileStyle}
+      data-pile-id={pileId}
+    >
       <CardMarkers cards={cards.slice(0, Math.max(0, topIndex - 1))} />
       {cardBelow && <CardComponent key={cardBelow.id} card={cardBelow} style={{ top: 0, left: 0 }} />}
       <CardComponent
@@ -57,6 +66,7 @@ export const FoundationPile = React.memo(function FoundationPile({
         onPointerDown={onPointerDown ? (e) => onPointerDown(e, pileId, topIndex) : undefined}
         onClick={() => onCardClick(pileId, topIndex)}
       />
+      {cards.length !== countAtMount && <span key={cards.length} className="foundation-pop" />}
     </div>
   );
 });

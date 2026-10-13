@@ -53,11 +53,11 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
 
   return (
     <div
-      className="flex-1 flex flex-col items-center w-full overflow-y-auto"
+      className="screen-enter flex-1 flex flex-col items-center w-full overflow-y-auto"
       style={{ padding: 'clamp(16px, 4vw, 32px) clamp(12px, 3vw, 24px) calc(clamp(24px, 5vw, 40px) + env(safe-area-inset-bottom))' }}
     >
       {/* Logo */}
-      <div className="text-center mb-4" style={{ marginBottom: 'clamp(20px, 3vh, 40px)' }}>
+      <div className="rise-in text-center mb-4" style={{ marginBottom: 'clamp(20px, 3vh, 40px)' }}>
         <img
           src="/logo.png"
           alt="Shuffled — fanned playing cards"
@@ -70,7 +70,7 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
           loading="eager"
         />
         <h1
-          className="text-white font-extrabold italic m-0"
+          className="text-white font-extrabold italic m-0 leading-none"
           style={{
             fontSize: 'clamp(36px, 10vw, 56px)',
             textShadow: '0 2px 12px rgba(0,0,0,0.3), 0 0 40px rgba(255,255,255,0.08)',
@@ -80,8 +80,8 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
         >
           Shuffled
         </h1>
-        <p className="text-white/45 m-0 tracking-wide uppercase font-medium" style={{ fontSize: 'clamp(9px, 2.2vw, 12px)', letterSpacing: '2.5px', marginTop: '2px' }}>
-          Your favorite card and word games
+        <p className="text-white/55 m-0 font-medium" style={{ fontSize: 'clamp(13px, 3.4vw, 15px)', marginTop: '10px' }}>
+          Card and word games for a quiet few minutes
         </p>
       </div>
 
@@ -93,13 +93,14 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
           maxWidth: 'clamp(300px, 92vw, 480px)',
         }}
       >
-        {visibleGames.map((game) => {
+        {visibleGames.map((game, order) => {
           const hasSave = hasSavedGame(game.type);
           const best = getBestScore(game.type);
 
           return (
             <GameCard
               key={game.type}
+              order={order + 1}
               variant={game.variant}
               title={game.name}
               subtitle={game.description}

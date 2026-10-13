@@ -109,6 +109,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
 
   const { boardRef, setFlightOrigins } = useCardFlight(
     [state.freeCells, state.foundations, state.tableau, isDragging],
+    { spawnFrom: '[data-pile-id="freecell-0"]', dealKey: state.gameId },
   );
 
   // One sound per card move, however it was made (tap, drag, auto-move)
@@ -320,7 +321,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
 
   return (
     <div
-      className="freecell-game flex-1 flex flex-col w-full overflow-y-auto"
+      className="freecell-game screen-enter flex-1 flex flex-col w-full overflow-y-auto"
       onClick={(e) => {
         if (!state.selectedCard) return;
         if ((e.target as HTMLElement).closest('[data-pile-id], [data-card-id], button')) return;
@@ -369,6 +370,7 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
             cards={pile}
             isValidTarget={highlightedPiles.has(`foundation-${i}`)}
             isSelected={state.selectedCard?.pileId === `foundation-${i}`}
+            celebrate={state.hasWon}
             onCardClick={handleCardClick}
             onPileClick={handlePileClick}
           />
@@ -397,34 +399,18 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
 
       {/* Dead end — nothing can move */}
       {isStuck && openModal === null && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="No more moves"
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[20000] animate-[fadeIn_0.3s_ease] backdrop-blur-[4px]"
-        >
-          <div
-            className="win-card-bg rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-[scaleIn_0.3s_ease] text-center"
-            style={{ padding: 'clamp(24px, 5vw, 40px)', width: 'clamp(260px, 80vw, 340px)' }}
-          >
-            <h2 className="font-bold text-[#c62828] m-0 mb-3" style={{ fontSize: 'clamp(20px, 5vw, 28px)' }}>
-              No More Moves
-            </h2>
-            <p className="text-[#666] m-0 mb-5" style={{ fontSize: 'clamp(12px, 3vw, 15px)' }}>
+        <div role="dialog" aria-modal="true" aria-label="No more moves" className="sheet-backdrop sheet-backdrop--dialog">
+          <div className="sheet-panel">
+            <h2 className="sheet-title mb-2">No moves left</h2>
+            <p className="m-0 mb-6 leading-snug text-[var(--text-soft)]" style={{ fontSize: 15 }}>
               Every free cell is full and nothing fits. Take a move back or deal a new game.
             </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                className="flex-1 bg-[#2e7d32] text-white font-semibold border-none rounded-xl py-3 cursor-pointer transition-[background,transform] hover:bg-[#388e3c] active:scale-[0.96]"
-                onClick={handleUndo}
-              >
-                Undo
+            <div className="flex gap-3">
+              <button className="btn btn-quiet flex-1" onClick={handleNewGame}>
+                New game
               </button>
-              <button
-                className="flex-1 bg-[#e8e8e8] text-[#333] font-semibold border-none rounded-xl py-3 cursor-pointer transition-[background,transform] hover:bg-[#ddd] active:scale-[0.96]"
-                onClick={handleNewGame}
-              >
-                New Game
+              <button className="btn btn-primary flex-1" onClick={handleUndo}>
+                Undo
               </button>
             </div>
           </div>

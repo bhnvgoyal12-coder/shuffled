@@ -90,7 +90,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
 
   const { boardRef, setFlightOrigins } = useCardFlight(
     [state.stock, state.waste, state.foundations, state.tableau, isDragging],
-    { spawnFrom: '[data-pile-id="stock"]' },
+    { spawnFrom: '[data-pile-id="stock"]', dealKey: state.gameId },
   );
 
   // One sound per card move, however it was made (tap, drag, auto-move)
@@ -283,7 +283,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
 
   return (
     <div
-      className="flex-1 flex flex-col w-full overflow-y-auto"
+      className="screen-enter flex-1 flex flex-col w-full overflow-y-auto"
       onClick={(e) => {
         if (!state.selectedCard) return;
         if ((e.target as HTMLElement).closest('[data-pile-id], [data-card-id], button')) return;
@@ -338,6 +338,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
             cards={pile}
             isValidTarget={highlightedPiles.has(`foundation-${i}`)}
             isSelected={state.selectedCard?.pileId === `foundation-${i}`}
+            celebrate={state.hasWon}
             onPointerDown={handlePointerDown}
             onCardClick={handleCardClick}
             onPileClick={handlePileClick}

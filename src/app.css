@@ -17,6 +17,28 @@
   --board-padding: clamp(4px, 1.5vw, 16px);
   --ws-cell-size: clamp(30px, 8vw, 44px);
 
+  /* Materials: lit felt, dark lacquer panels edged in brass, ivory card stock */
+  --felt-lit: #1f4d30;
+  --felt: #0f2a1a;
+  --felt-edge: #040a06;
+  --lacquer: #1a1c1a;
+  --lacquer-deep: #0b0c0b;
+  --brass: #dec378;
+  --brass-deep: #8f7335;
+  --ivory: #fbf8f0;
+  --ivory-shade: #efe9da;
+  --ink: #1c1a17;
+  --card-red: #cf3a2f;
+  --text: #f1ede3;
+  --text-soft: rgba(241, 237, 227, 0.62);
+
+  --font-ui: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Narrow, sturdy numerals: card ranks, scores, clocks */
+  --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.3, 1.5, 0.5, 1);
+
   /* Card back theme (set dynamically by SettingsContext) */
   --card-back-color1: #1565C0;
   --card-back-color2: #1976D2;
@@ -34,12 +56,13 @@
    too — otherwise they inherit values computed from the root card width. */
 :root, .freecell-game, .spider-game {
   --card-height: calc(var(--card-width) * 1.4);
-  --card-radius: calc(var(--card-width) * 0.1);
+  --card-radius: calc(var(--card-width) * 0.11);
   /* Slightly larger in proportion on small cards, but never so large that "10" and its suit collide */
   --card-font-size: clamp(12px, calc(var(--card-width) * 0.29), max(14px, calc(var(--card-width) * 0.25)));
   --card-center-font-size: clamp(20px, calc(var(--card-width) * 0.54), max(26px, calc(var(--card-width) * 0.5)));
   --card-pip-size: max(10px, calc(var(--card-width) * 0.2));
-  --tableau-offset: max(22px, calc(var(--card-width) * 0.36));
+  /* Deep enough to show a whole rank — including the tail of a Q */
+  --tableau-offset: max(23px, calc(var(--card-width) * 0.4));
   --tableau-offset-down: max(5px, calc(var(--card-width) * 0.1));
   /* Tightest a fanned pile may be squeezed before the board scrolls instead */
   --tableau-offset-min: calc(var(--card-font-size) * 0.95);
@@ -55,16 +78,20 @@ html, body, #root {
 }
 
 html {
-  background: #000;
+  background: var(--felt-edge);
 }
 
 body {
-  background: radial-gradient(60.25% 50% at 50% 50%, #1C3623 0%, #000 74.13%);;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* A lamp over the table: felt lit from above, falling off to the edges */
+  background: radial-gradient(130% 85% at 50% 28%, var(--felt-lit) 0%, var(--felt) 42%, var(--felt-edge) 100%) fixed;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-weight: 500;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   overflow-x: hidden;
   /* Safe area insets for notched devices (iPhone X+, etc.) */
@@ -75,14 +102,20 @@ body {
     env(safe-area-inset-left);
 }
 
+/* Felt grain */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E");
-  opacity: 0.04;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
   pointer-events: none;
   z-index: 0;
+}
+
+button {
+  font-family: inherit;
 }
 
 #root {
@@ -102,7 +135,7 @@ body::before {
 
 .card-3d {
   transform-style: preserve-3d;
-  transition: transform 0.4s ease;
+  transition: transform 0.42s var(--ease-out);
 }
 
 .card-3d--face-up {
@@ -122,21 +155,97 @@ body::before {
   transform: rotateY(180deg);
 }
 
-/* --- Card Gradients --- */
+/* --- Card stock --- */
 .card-front-bg {
-  background: linear-gradient(145deg, #ffffff 0%, #f8f8f8 100%);
+  background: linear-gradient(165deg, #fffefa 0%, var(--ivory) 55%, var(--ivory-shade) 100%);
+  border: 1px solid rgba(70, 58, 30, 0.22);
+  border-radius: var(--card-radius);
+  color: var(--ink);
 }
 
-/* White rim of a card back — thin enough that a face-down card's sliver in a pile still shows its colour */
+.card-front-bg.card--red {
+  color: var(--card-red);
+}
+
+/* Resting on the table / on other cards */
+.card-shadow {
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.28), 0 3px 7px rgba(0, 0, 0, 0.22);
+}
+
+/* Picked up */
+.card-shadow--lifted {
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3), 0 18px 32px rgba(0, 0, 0, 0.45);
+}
+
+.card-rank {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: calc(var(--card-font-size) * 1.45);
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+}
+
+.card-suit-corner {
+  width: calc(var(--card-font-size) * 0.95);
+  height: calc(var(--card-font-size) * 0.95);
+  margin-top: calc(var(--card-font-size) * 0.08);
+  flex-shrink: 0;
+}
+
+.card-suit-center {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  width: calc(var(--card-width) * 0.5);
+  height: calc(var(--card-width) * 0.5);
+  translate: -50% -50%;
+}
+
+/* --- Card back --- */
+/* Ivory rim — thin enough that a face-down card's sliver in a pile still shows its colour */
 .card-back-rim {
-  border: max(1.5px, calc(var(--card-width) * 0.04)) solid #fff;
+  border: max(1.5px, calc(var(--card-width) * 0.04)) solid var(--ivory);
 }
 
 .card-back-pattern {
-  background: linear-gradient(135deg, var(--card-back-color1) 25%, var(--card-back-color2) 25%, var(--card-back-color2) 50%, var(--card-back-color1) 50%, var(--card-back-color1) 75%, var(--card-back-color2) 75%);
-  background-size: 10px 10px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.13) 0 1.5px, transparent 1.5px 7px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.13) 0 1.5px, transparent 1.5px 7px),
+    linear-gradient(160deg, var(--card-back-color2) 0%, var(--card-back-color1) 100%);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.28), inset 0 0 12px rgba(0, 0, 0, 0.25);
 }
 
+/* --- Empty piles: a slot pressed into the felt --- */
+.pile-slot {
+  width: var(--card-width);
+  height: var(--card-height);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--card-radius);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.2);
+  font-family: var(--font-display);
+  font-weight: 700;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.pile-slot--target {
+  border-color: var(--brass);
+  background: rgba(222, 195, 120, 0.1);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 16px rgba(222, 195, 120, 0.45);
+  animation: targetBreathe 1.3s ease-in-out infinite;
+}
+
+@keyframes targetBreathe {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+/* --- Panels (dialogs, sheets) --- */
 .win-card-bg {
   background: linear-gradient(145deg, #ffffff, #f0f0f0);
 }
@@ -176,14 +285,14 @@ body::before {
 
 .freecell-game {
   --card-width: clamp(30px, min(calc((var(--avail-width) - 2 * var(--board-padding) - 7 * var(--card-gap)) / 8), 12dvh), 96px);
-  --tableau-offset: max(22px, calc(var(--card-width) * 0.38));
+  --tableau-offset: max(23px, calc(var(--card-width) * 0.4));
 }
 
 .mahjong-game {
   /* The turtle is 15 tiles wide and 8 tall — fit whichever dimension is tighter */
   --mahjong-tile-width: clamp(18px, min(calc((var(--avail-width) - 16px) / 15.6), calc((100dvh - var(--topbar-height) - 24px) / 11.4)), 64px);
   --mahjong-tile-height: calc(var(--mahjong-tile-width) * 1.35);
-  --mahjong-tile-font-size: calc(var(--mahjong-tile-width) * 0.62);
+  --mahjong-tile-font-size: calc(var(--mahjong-tile-width) * 0.68);
   /* Visible thickness of a tile, and how far each layer is shifted */
   --mahjong-depth: calc(var(--mahjong-tile-width) * 0.1);
 }
@@ -197,46 +306,73 @@ body::before {
   align-items: center;
   justify-content: center;
   border: 1px solid #a8966a;
-  border-radius: calc(var(--mahjong-tile-width) * 0.14);
-  background: linear-gradient(145deg, #fffdf2 0%, #f1e8cf 100%);
+  border-radius: calc(var(--mahjong-tile-width) * 0.16);
+  background: linear-gradient(150deg, #fffef6 0%, #f6efd9 60%, #e9dfc0 100%);
   /* Two hard steps for the side of the tile, then a soft drop shadow */
   box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
     calc(var(--mahjong-depth) * 0.5) calc(var(--mahjong-depth) * 0.5) 0 #cdbb8c,
     var(--mahjong-depth) var(--mahjong-depth) 0 #8d7b4e,
     calc(var(--mahjong-depth) * 1.6) calc(var(--mahjong-depth) * 1.8) calc(var(--mahjong-depth) * 1.5) rgba(0, 0, 0, 0.45);
-  font-family: inherit;
+  font-family: var(--font-display);
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: translate 0.12s ease, filter 0.15s ease;
+  /* left / top glide when the remaining tiles are shuffled */
+  transition: translate 0.14s var(--ease-out), filter 0.2s ease, left 0.45s var(--ease-out), top 0.45s var(--ease-out);
+  animation: tileEnter 0.4s var(--ease-out) var(--enter-delay, 0ms) both;
+}
+
+@keyframes tileEnter {
+  from { opacity: 0; transform: translateY(calc(var(--mahjong-tile-height) * -0.35)) scale(1.08); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Tiles that can't be taken yet recede: darker, never see-through */
 .mahjong-tile--blocked {
   cursor: default;
-  filter: brightness(0.66) saturate(0.75);
+  filter: brightness(0.64) saturate(0.7);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .mahjong-tile--free:hover {
-    filter: brightness(1.06);
-    translate: 0 -1px;
+    filter: brightness(1.05);
+    translate: 0 calc(var(--mahjong-depth) * -0.4);
   }
 }
 
 .mahjong-tile--selected {
-  translate: 0 calc(var(--mahjong-depth) * -0.8);
-  background: linear-gradient(145deg, #fff8d6 0%, #ffe082 100%);
-  border-color: #ff8f00;
+  translate: 0 calc(var(--mahjong-depth) * -0.9);
+  background: linear-gradient(150deg, #fff9df 0%, #f3dc9a 100%);
+  border-color: var(--brass-deep);
   box-shadow:
-    0 0 0 2px #ffc107,
+    0 0 0 2px var(--brass),
     var(--mahjong-depth) var(--mahjong-depth) 0 #8d7b4e,
-    0 0 14px rgba(255, 193, 7, 0.75);
+    0 0 16px rgba(222, 195, 120, 0.85);
 }
 
-.mahjong-tile--hinted {
-  border-color: #0288d1;
+/* Drawn on a pseudo-element: swapping the tile's own animation would replay its entrance */
+.mahjong-tile--hinted::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  pointer-events: none;
   animation: hintPulse 0.9s ease-in-out infinite;
+}
+
+/* A matched pair pops and fades */
+.mahjong-tile--leaving {
+  pointer-events: none;
+  z-index: 9000 !important;
+  box-shadow: 0 0 0 2px var(--brass), 0 0 22px rgba(222, 195, 120, 0.9);
+  animation: tileLeave 0.32s var(--ease-out) both;
+}
+
+@keyframes tileLeave {
+  0% { opacity: 1; transform: scale(1); }
+  35% { opacity: 1; transform: scale(1.18); }
+  100% { opacity: 0; transform: scale(0.6); }
 }
 
 .mahjong-tile:focus-visible {
@@ -257,6 +393,81 @@ body::before {
   font-size: calc(var(--mahjong-tile-font-size) * 0.4);
   line-height: 1;
   opacity: 0.75;
+}
+
+/* --- Word Search --- */
+.ws-cell {
+  width: var(--ws-cell-size);
+  height: var(--ws-cell-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24%;
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-weight: 700;
+  font-size: calc(var(--ws-cell-size) * 0.5);
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s ease, color 0.1s ease, scale 0.12s var(--ease-out);
+  /* A new grid ripples in from the top-left corner */
+  animation: cellEnter 0.36s var(--ease-out) calc(var(--cell-order, 0) * 24ms) both;
+}
+
+@keyframes cellEnter {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.ws-cell--drag {
+  background: var(--brass);
+  color: #2a2008;
+  scale: 1.07;
+}
+
+/* The word's colour sweeps along its letters */
+.ws-cell--found {
+  background: var(--ws-found-color, #4CAF50);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  animation: cellFound 0.42s var(--ease-spring) calc(var(--found-order, 0) * 45ms) both;
+}
+
+@keyframes cellFound {
+  0% { background: var(--brass); transform: scale(0.82); }
+  100% { background: var(--ws-found-color, #4CAF50); transform: scale(1); }
+}
+
+.ws-cell--hinted {
+  box-shadow: 0 0 0 2px #4FC3F7, 0 0 14px rgba(79, 195, 247, 0.85);
+}
+
+.ws-word {
+  padding: 5px 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-weight: 700;
+  font-size: clamp(12px, 3.3vw, 15px);
+  letter-spacing: 0.06em;
+  transition: opacity 0.3s ease;
+}
+
+.ws-word--found {
+  color: #fff;
+  border-color: transparent;
+  text-decoration: line-through;
+  opacity: 0.6;
+  animation: wordFound 0.4s var(--ease-spring);
+}
+
+@keyframes wordFound {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.14); }
+  100% { transform: scale(1); }
 }
 
 /* --- TopBar layout (uses CSS custom properties) --- */
@@ -281,14 +492,20 @@ body::before {
 /* --- Desktop-only card hover --- */
 @media (hover: hover) and (pointer: fine) {
   .card-hover:hover {
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.28), 0 6px 14px rgba(0, 0, 0, 0.3);
   }
 }
 
 /* --- Card highlights --- */
+/* Picked for a move */
+.card-selected {
+  outline: 2.5px solid var(--brass);
+  outline-offset: -1px;
+}
+
 /* A pile this card (or the carried stack) can legally be placed on */
 .card-target {
-  box-shadow: 0 0 0 2px #FFC107, 0 0 12px rgba(255, 193, 7, 0.4);
+  box-shadow: 0 0 0 2px var(--brass), 0 0 16px rgba(222, 195, 120, 0.6);
 }
 
 /* Hint: the card to move */
@@ -306,30 +523,64 @@ body::before {
   animation: hintPulse 0.9s ease-in-out infinite;
 }
 
+/* --- Carried cards --- */
+/* The stack lifts off the table when picked up and leans into the direction of travel */
+.drag-stack {
+  position: relative;
+  width: var(--card-width);
+  height: var(--card-height);
+  transform-origin: 50% 20%;
+  rotate: var(--drag-tilt, 0deg);
+  transition: rotate 0.18s ease-out;
+  animation: dragLift 0.16s var(--ease-out) both;
+}
+
+@keyframes dragLift {
+  from { scale: 1; }
+  to { scale: 1.06; }
+}
+
+/* --- A card landing on a foundation --- */
+.foundation-pop {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  pointer-events: none;
+  z-index: 5;
+  animation: foundationPop 0.55s var(--ease-out) 0.22s both;
+}
+
+@keyframes foundationPop {
+  0% { box-shadow: 0 0 0 0 rgba(222, 195, 120, 0.9); opacity: 1; }
+  100% { box-shadow: 0 0 0 calc(var(--card-width) * 0.22) rgba(222, 195, 120, 0); opacity: 0; }
+}
+
+/* --- Winning: the four foundations take a bow, one after another --- */
+.foundation-celebrate {
+  animation: foundationHop 0.6s var(--ease-out) calc(var(--pile-index, 0) * 90ms + 0.2s) 2;
+}
+
+@keyframes foundationHop {
+  0%, 100% { translate: 0 0; }
+  40% { translate: 0 calc(var(--card-height) * -0.22); }
+}
+
 /* --- Auto-finish button --- */
 .auto-finish-btn {
   translate: -50% 0;
-  background: linear-gradient(180deg, #ffd54f 0%, #ffb300 100%);
-  animation: autoFinishIn 0.3s ease, autoFinishGlow 1.6s ease-in-out 0.3s infinite;
+  font-family: var(--font-ui);
+  background: linear-gradient(180deg, #f3dc9a 0%, var(--brass) 45%, #b8963f 100%);
+  animation: autoFinishIn 0.35s var(--ease-spring), autoFinishGlow 1.6s ease-in-out 0.35s infinite;
 }
 
 @keyframes autoFinishIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(16px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes autoFinishGlow {
-  0%, 100% { box-shadow: 0 6px 24px rgba(255, 193, 7, 0.45); }
-  50% { box-shadow: 0 6px 32px rgba(255, 193, 7, 0.8); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .card-hint, .pile-hint, .mahjong-tile--hinted {
-    animation: none;
-    box-shadow: 0 0 0 3px #4FC3F7;
-  }
-  .auto-finish-btn { animation: none; }
-  .card-3d { transition: none; }
+  0%, 100% { box-shadow: 0 6px 22px rgba(222, 195, 120, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+  50% { box-shadow: 0 6px 34px rgba(222, 195, 120, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
 }
 
 /* --- Stock pile depth nth-child positioning --- */
@@ -382,4 +633,310 @@ body::before {
 
 .animate-shake {
   animation: shake 0.4s ease-in-out;
+}
+
+/* ============================================
+   Interface chrome
+   ============================================ */
+
+/* --- Screens --- */
+/* Opacity only: a transform here would re-anchor the fixed overlays inside */
+.screen-enter {
+  animation: fadeIn 0.24s ease both;
+}
+
+/* One staged entrance for the home screen: mark, then the games in turn */
+.rise-in {
+  /* backwards only: once it has landed, hover and press transforms take over again */
+  animation: riseIn 0.5s var(--ease-out) backwards;
+  animation-delay: calc(var(--rise-order, 0) * 70ms);
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* --- Top bar --- */
+.bar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: clamp(32px, 9.6vw, 40px);
+  height: clamp(32px, 9.6vw, 40px);
+  padding: 0;
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 6px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+.bar-btn svg {
+  width: clamp(16px, 4.6vw, 19px);
+  height: clamp(16px, 4.6vw, 19px);
+}
+
+.bar-btn--text {
+  padding: 0 clamp(10px, 3vw, 14px);
+  font-weight: 700;
+  font-size: clamp(12px, 3.3vw, 14px);
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bar-btn:hover:not(:disabled) {
+    border-color: rgba(222, 195, 120, 0.6);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.08) 100%);
+  }
+}
+
+.bar-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.bar-btn:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.bar-btn:focus-visible, .btn:focus-visible, .pile-slot:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.bar-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+  color: var(--text-soft);
+  font-size: clamp(11px, 3vw, 13px);
+}
+
+.bar-stat__value {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(16px, 4.4vw, 19px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The figure ticks when it changes */
+.bar-stat__value--bump {
+  display: inline-block;
+  animation: statBump 0.3s var(--ease-out);
+}
+
+@keyframes statBump {
+  0% { transform: translateY(-35%); opacity: 0.2; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.bar-clock {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(15px, 4.1vw, 17px);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-clock svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.55;
+}
+
+/* --- Buttons --- */
+.btn {
+  border-radius: 999px;
+  padding: 13px 22px;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn-primary {
+  color: #fff;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, #4a9a14 0%, #386845 100%) padding-box,
+    linear-gradient(90deg, #3C702A 22%, #C4FFB1 50%, #3C702A 76%) border-box;
+  box-shadow: 0 1px 18px rgba(117, 247, 72, 0.18), inset 0 -3px 4px rgba(0, 0, 0, 0.45), inset 0 3px 4px rgba(255, 255, 255, 0.4);
+}
+
+.btn-quiet {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+}
+
+/* --- Sheets and dialogs --- */
+/* Phones: a sheet that slides up from the bottom, within thumb reach.
+   Wider screens: a centred panel. */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(2, 8, 5, 0.66);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: fadeIn 0.22s ease both;
+}
+
+.sheet-panel {
+  width: 100%;
+  max-width: 440px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px 20px calc(22px + env(safe-area-inset-bottom));
+  color: var(--text);
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 26px 26px 0 0;
+  background:
+    linear-gradient(170deg, var(--lacquer) 0%, var(--lacquer-deep) 70%, #111a12 100%) padding-box,
+    linear-gradient(90deg, #353534 10%, var(--brass) 48%, #353534 92%) border-box;
+  box-shadow: 0 -14px 44px rgba(0, 0, 0, 0.55), inset 0 12px 20px rgba(255, 211, 99, 0.09);
+  animation: sheetUp 0.34s var(--ease-out) both;
+}
+
+/* Short confirmations are centred at every size */
+.sheet-backdrop--dialog {
+  align-items: center;
+  padding: 16px;
+}
+
+.sheet-backdrop--dialog .sheet-panel {
+  max-width: 360px;
+  border-bottom: 1px solid transparent;
+  border-radius: 26px;
+  padding: 26px 22px 22px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), inset 0 12px 20px rgba(255, 211, 99, 0.09);
+  animation: sheetPop 0.3s var(--ease-spring) both;
+}
+
+@media (min-width: 640px) {
+  .sheet-backdrop {
+    align-items: center;
+    padding: 16px;
+  }
+
+  .sheet-panel {
+    border-bottom: 1px solid transparent;
+    border-radius: 26px;
+    padding: 26px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), inset 0 12px 20px rgba(255, 211, 99, 0.09);
+    animation: sheetPop 0.28s var(--ease-spring) both;
+  }
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes sheetPop {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.sheet-title {
+  margin: 0;
+  font-weight: 800;
+  font-size: clamp(21px, 5.5vw, 25px);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.sheet-close {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-soft);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.sheet-close:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--text);
+}
+
+/* The result of a game arrives after the cards have finished their bow */
+.sheet-backdrop--late {
+  animation-delay: 0.9s;
+}
+
+.sheet-backdrop--late .sheet-panel {
+  animation-delay: 0.95s;
+}
+
+.result-figure {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(28px, 8vw, 36px);
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Reduced motion: keep every state change, drop the travel
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .card-hint, .pile-hint, .mahjong-tile--hinted::after {
+    animation: none !important;
+    box-shadow: 0 0 0 3px #4FC3F7;
+  }
 }

@@ -11,24 +11,24 @@ interface StockPileProps {
 }
 
 const backClass =
-  'absolute w-[var(--card-width)] h-[var(--card-height)] rounded-[var(--card-radius)] card-back-pattern card-back-rim shadow-[inset_0_0_0_2px_var(--card-back-border),0_1px_3px_rgba(0,0,0,0.12)]';
+  'absolute w-[var(--card-width)] h-[var(--card-height)] rounded-[var(--card-radius)] card-back-pattern card-back-rim card-shadow';
 
 export const StockPile = React.memo(function StockPile({ cards, canRecycle, isHinted = false, onDraw }: StockPileProps) {
   if (cards.length === 0) {
     return (
       <button
         type="button"
-        className={`relative w-[var(--card-width)] h-[var(--card-height)] rounded-[var(--card-radius)] flex items-center justify-center border-2 border-dashed bg-black/5 p-0 transition-[border-color,color] duration-200 ${
-          canRecycle
-            ? 'cursor-pointer border-white/30 text-white/50 hover:border-white/50 hover:text-white/70'
-            : 'cursor-default border-white/15 text-white/15'
-        } ${isHinted ? 'pile-hint' : ''}`}
-        style={{ fontSize: 'var(--card-center-font-size)' }}
+        className={`pile-slot relative ${canRecycle ? 'cursor-pointer' : 'cursor-default opacity-50'} ${isHinted ? 'pile-hint' : ''}`}
         onClick={onDraw}
         data-pile-id="stock"
         aria-label={canRecycle ? 'Turn the waste pile back over' : 'Stock is empty'}
       >
-        &#x21BB;
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '46%', height: '46%' }}>
+          <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8" />
+          <path d="M21 3v5h-5" />
+          <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16" />
+          <path d="M3 21v-5h5" />
+        </svg>
       </button>
     );
   }
@@ -46,8 +46,8 @@ export const StockPile = React.memo(function StockPile({ cards, canRecycle, isHi
       {cards.length > 1 && <div className={`${backClass} top-[1.5px] left-[1px] opacity-80`} />}
       <div className={`${backClass} top-0 left-0`} />
       <span
-        className="absolute bottom-[6%] left-1/2 -translate-x-1/2 rounded-full bg-black/45 text-white/90 font-semibold tabular-nums leading-none"
-        style={{ fontSize: 'calc(var(--card-font-size) * 0.62)', padding: '0.25em 0.6em' }}
+        className="absolute bottom-[7%] left-1/2 -translate-x-1/2 rounded-full bg-black/50 text-white tabular-nums leading-none"
+        style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 'calc(var(--card-font-size) * 0.8)', padding: '0.2em 0.55em' }}
       >
         {cards.length}
       </span>

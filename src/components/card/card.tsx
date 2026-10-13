@@ -14,6 +14,8 @@ export interface GameCardProps {
   imageAlt: string;
   playLabel: string;
   bestScore?: number;
+  /** Position in the home screen's staged entrance */
+  order?: number;
   onPlay: () => void;
 }
 
@@ -26,12 +28,14 @@ export function GameCard({
   imageAlt,
   playLabel,
   bestScore,
+  order = 0,
   onPlay,
 }: GameCardProps) {
   const isHero = variant === 'hero';
 
   const cardClass = [
     styles.card,
+    'rise-in',
     variant === 'hero' && styles.variantHero,
     variant === 'small' && styles.variantSmall,
     variant === 'medium' && styles.variantMedium,
@@ -66,7 +70,7 @@ export function GameCard({
     .join(' ');
 
   return (
-    <article className={cardClass}>
+    <article className={cardClass} style={{ '--rise-order': order } as React.CSSProperties}>
       <div
         className={mediaClass}
         onClick={onPlay}

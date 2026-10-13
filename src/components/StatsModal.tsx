@@ -25,65 +25,56 @@ export function StatsModal({ gameType, onClose }: StatsModalProps) {
       role="dialog"
       aria-modal="true"
       aria-label="Statistics"
-      className="fixed inset-0 z-[20000] flex items-center justify-center bg-black/70"
+      className="sheet-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        className="rounded-2xl flex flex-col"
-        style={{
-          background: '#1a1a1a',
-          border: '1px solid rgba(255,255,255,0.1)',
-          padding: 'clamp(20px, 5vw, 32px)',
-          width: 'clamp(280px, 85vw, 360px)',
-          gap: '20px',
-        }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-white font-bold m-0" style={{ fontSize: 'clamp(16px, 4vw, 20px)' }}>
-            {GAME_NAMES[gameType]} Stats
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-white/50 hover:text-white transition-colors rounded-full flex items-center justify-center"
-            style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', fontSize: 18 }}
-            aria-label="Close statistics"
-          >
+      <div className="sheet-panel flex flex-col" style={{ gap: 18 }}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="sheet-title">Your record</h2>
+            <p className="m-0 mt-0.5 text-[var(--text-soft)]" style={{ fontSize: 14 }}>{GAME_NAMES[gameType]}</p>
+          </div>
+          <button onClick={onClose} className="sheet-close" aria-label="Close statistics">
             ×
           </button>
         </div>
 
-        {/* Big numbers row */}
-        <div className="grid grid-cols-3 gap-3">
-          <StatBox label="Played" value={String(stats.played)} />
-          <StatBox label="Won" value={String(stats.won)} />
-          <StatBox label="Win %" value={`${winPct}%`} highlight />
-        </div>
+        {stats.played === 0 ? (
+          <p className="m-0 text-[var(--text-soft)] leading-snug" style={{ fontSize: 15 }}>
+            Nothing here yet. Finish a game and your wins, streaks and best time will show up.
+          </p>
+        ) : (
+          <>
+            {/* Win rate, with the games behind it */}
+            <div
+              className="rounded-2xl"
+              style={{ background: 'rgba(255,255,255,0.06)', padding: '16px 18px' }}
+            >
+              <div className="flex items-end justify-between gap-3">
+                <span className="result-figure" style={{ fontSize: 'clamp(40px, 12vw, 52px)', color: 'var(--brass)' }}>
+                  {winPct}%
+                </span>
+                <span className="text-[var(--text-soft)] text-right leading-snug" style={{ fontSize: 14 }}>
+                  {stats.won} won of {stats.played} played
+                </span>
+              </div>
+              <div className="mt-3 rounded-full overflow-hidden" style={{ height: 6, background: 'rgba(255,255,255,0.1)' }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${winPct}%`, background: 'linear-gradient(90deg, var(--brass-deep), var(--brass))' }}
+                />
+              </div>
+            </div>
 
-        {/* Second row */}
-        <div className="grid grid-cols-2 gap-3">
-          <StatBox label="Current Streak" value={String(stats.currentStreak)} />
-          <StatBox label="Best Streak" value={String(stats.bestStreak)} />
-        </div>
+            <div className="grid grid-cols-3 gap-3">
+              <StatBox label="Streak" value={String(stats.currentStreak)} />
+              <StatBox label="Best streak" value={String(stats.bestStreak)} />
+              <StatBox label="Best time" value={formatBestTime(stats.bestTimeSeconds)} />
+            </div>
+          </>
+        )}
 
-        {/* Best time */}
-        <div>
-          <StatBox label="Best Time" value={formatBestTime(stats.bestTimeSeconds)} wide />
-        </div>
-
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="w-full font-semibold rounded-xl transition-opacity hover:opacity-90"
-          style={{
-            background: '#2e7d32',
-            color: 'white',
-            border: 'none',
-            padding: '12px',
-            cursor: 'pointer',
-            fontSize: 15,
-          }}
-        >
+        <button onClick={onClose} className="btn btn-primary w-full">
           Done
         </button>
       </div>
@@ -91,32 +82,14 @@ export function StatsModal({ gameType, onClose }: StatsModalProps) {
   );
 }
 
-function StatBox({ label, value, highlight, wide }: { label: string; value: string; highlight?: boolean; wide?: boolean }) {
+function StatBox({ label, value }: { label: string; value: string }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center rounded-xl${wide ? ' w-full' : ''}`}
-      style={{
-        background: 'rgba(255,255,255,0.06)',
-        padding: '12px 8px',
-        gap: 4,
-      }}
+      className="flex flex-col items-center justify-center rounded-2xl text-center"
+      style={{ background: 'rgba(255,255,255,0.06)', padding: '14px 6px', gap: 6 }}
     >
-      <span
-        className="font-bold"
-        style={{
-          fontSize: 'clamp(22px, 6vw, 32px)',
-          color: highlight ? '#4caf50' : 'white',
-          lineHeight: 1,
-        }}
-      >
-        {value}
-      </span>
-      <span
-        className="uppercase tracking-wide text-center"
-        style={{ fontSize: 'clamp(9px, 2.2vw, 11px)', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.08em' }}
-      >
-        {label}
-      </span>
+      <span className="result-figure" style={{ fontSize: 'clamp(22px, 6.5vw, 28px)' }}>{value}</span>
+      <span className="text-[var(--text-soft)] leading-tight" style={{ fontSize: 12.5 }}>{label}</span>
     </div>
   );
 }

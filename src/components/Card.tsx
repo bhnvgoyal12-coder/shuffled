@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Card as CardType } from '../types';
-import { SUIT_SYMBOLS } from '../constants';
+import { SuitSvg } from './SuitSvg';
 
 interface CardProps {
   card: CardType;
@@ -21,36 +21,17 @@ interface CardFaceProps {
 
 /** The printed front of a card. Shared by piles and the drag overlay so a card looks the same while it is carried. */
 export function CardFace({ card, className = '' }: CardFaceProps) {
-  const symbol = SUIT_SYMBOLS[card.suit];
-  const textColor = card.color === 'red' ? 'text-[#d32f2f]' : 'text-[#212121]';
-
   return (
     <div
-      className={`absolute inset-0 flex flex-col justify-between overflow-hidden border border-[#d0d0d0] card-face card-front-bg ${className}`}
-      style={{
-        borderRadius: 'var(--card-radius)',
-        padding: 'clamp(2px, 0.5vw, 5px)',
-      }}
+      className={`absolute inset-0 overflow-hidden card-face card-front-bg ${card.color === 'red' ? 'card--red' : ''} ${className}`}
+      style={{ padding: 'calc(var(--card-width) * 0.04) calc(var(--card-width) * 0.08)' }}
     >
-      {/* Top row: rank left, suit pip right */}
-      <div className={`flex items-start justify-between ${textColor}`}>
-        <span className="font-bold leading-[1.1]" style={{ fontSize: 'calc(var(--card-font-size) * 1.4)' }}>
-          {card.rank}
-        </span>
-        <span className="leading-none" style={{ fontSize: 'calc(var(--card-font-size) * 0.85)' }}>
-          {symbol}
-        </span>
+      {/* Top row: rank left, suit right — the part that stays visible in a fanned pile */}
+      <div className="flex items-start justify-between">
+        <span className="card-rank">{card.rank}</span>
+        <SuitSvg suit={card.suit} color="currentColor" className="card-suit-corner" />
       </div>
-
-      {/* Center content */}
-      <div className="absolute top-[55%] left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <span
-          className={`leading-none ${textColor}`}
-          style={{ fontSize: 'calc(var(--card-center-font-size) * 1.4)' }}
-        >
-          {symbol}
-        </span>
-      </div>
+      <SuitSvg suit={card.suit} color="currentColor" className="card-suit-center" />
     </div>
   );
 }
@@ -75,8 +56,8 @@ export const CardComponent = React.memo(function CardComponent({
   ].filter(Boolean).join(' ');
 
   const faceClasses = [
-    'card-hover shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.08)]',
-    isSelected ? 'outline-3 outline-[#FFC107] -outline-offset-1' : '',
+    'card-hover card-shadow',
+    isSelected ? 'card-selected' : '',
     isValidTarget ? 'card-target' : '',
     isHinted ? 'card-hint' : '',
   ].filter(Boolean).join(' ');
@@ -98,11 +79,11 @@ export const CardComponent = React.memo(function CardComponent({
 
         {/* Back face */}
         <div
-          className="absolute inset-0 overflow-hidden card-face card-face--back shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.08)]"
+          className="absolute inset-0 overflow-hidden card-face card-face--back card-shadow"
           style={{ borderRadius: 'var(--card-radius)' }}
         >
           <div
-            className="w-full h-full card-back-pattern card-back-rim shadow-[inset_0_0_0_2px_var(--card-back-border)]"
+            className="w-full h-full card-back-pattern card-back-rim"
             style={{ borderRadius: 'var(--card-radius)' }}
           />
         </div>

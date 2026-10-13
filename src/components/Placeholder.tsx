@@ -1,7 +1,12 @@
 import React from 'react';
+import type { Suit } from '../types';
+import { SuitSvg } from './SuitSvg';
 
 interface PlaceholderProps {
+  /** Short text shown in the empty slot (e.g. "K") */
   hint?: string;
+  /** Suit shown in the empty slot (foundations) */
+  suit?: Suit;
   isValidTarget?: boolean;
   onClick?: () => void;
   'data-pile-id'?: string;
@@ -9,24 +14,24 @@ interface PlaceholderProps {
 
 export const Placeholder = React.memo(function Placeholder({
   hint,
+  suit,
   isValidTarget = false,
   onClick,
   ...rest
 }: PlaceholderProps) {
   return (
     <div
-      className={`w-[var(--card-width)] h-[var(--card-height)] rounded-[var(--card-radius)] border-2 border-dashed flex items-center justify-center transition-[border-color,box-shadow,background] duration-200 ${
-        isValidTarget
-          ? 'border-[#FFC107] shadow-[0_0_12px_rgba(255,193,7,0.4)] bg-[rgba(255,193,7,0.08)] animate-[pulse_1.2s_ease-in-out_infinite]'
-          : 'border-white/20 bg-black/[0.04]'
-      }`}
+      className={`pile-slot ${isValidTarget ? 'pile-slot--target' : ''}`}
       onClick={onClick}
       {...rest}
     >
+      {suit && (
+        <SuitSvg suit={suit} color="currentColor" style={{ width: '44%', height: '44%' }} />
+      )}
       {hint && (
         <span
-          className="text-white opacity-15 overflow-hidden text-center leading-none"
-          style={{ fontSize: hint.length > 1 ? 'var(--card-font-size)' : 'var(--card-center-font-size)' }}
+          className="leading-none text-center"
+          style={{ fontSize: hint.length > 1 ? 'calc(var(--card-font-size) * 0.95)' : 'calc(var(--card-center-font-size) * 0.95)' }}
         >
           {hint}
         </span>

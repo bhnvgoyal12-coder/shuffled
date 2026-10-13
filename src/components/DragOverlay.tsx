@@ -15,16 +15,18 @@ export function DragOverlay({ cards, overlayRef, initialPos }: DragOverlayProps)
       ref={overlayRef}
       style={initialPos ? { transform: `translate(${initialPos.x}px, ${initialPos.y}px)` } : undefined}
     >
-      {cards.map((card, i) => (
-        <div
-          key={card.id}
-          className="absolute w-[var(--card-width)] h-[var(--card-height)] pointer-events-none"
-          style={{ top: `calc(${i} * var(--tableau-offset))`, left: 0 }}
-          data-drag-card-id={card.id}
-        >
-          <CardFace card={card} className="shadow-[0_14px_28px_rgba(0,0,0,0.25),0_10px_10px_rgba(0,0,0,0.22)]" />
-        </div>
-      ))}
+      <div className="drag-stack">
+        {cards.map((card, i) => (
+          <div
+            key={card.id}
+            className="absolute w-[var(--card-width)] h-[var(--card-height)] pointer-events-none"
+            style={{ top: `calc(${i} * var(--tableau-offset))`, left: 0 }}
+            data-drag-card-id={card.id}
+          >
+            <CardFace card={card} className="card-shadow--lifted" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

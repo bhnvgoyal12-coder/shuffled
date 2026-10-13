@@ -8,13 +8,15 @@ interface Point {
 interface UseCardFlightOptions {
   /** Selector (inside the board) of the element new cards should appear to come from, e.g. the stock pile. */
   spawnFrom?: string;
+  /** Changes with every new deal: all cards are then dealt out from `spawnFrom` again. */
+  dealKey?: string;
 }
 
 const FLIGHT_ID = 'card-flight';
 const MIN_DISTANCE = 2;
 /** Above this many simultaneous flights (a deal), cards leave one after another. */
 const STAGGER_THRESHOLD = 8;
-const STAGGER_MS = 12;
+const STAGGER_MS = 14;
 
 /**
  * Slides cards from where they were to where they now are whenever `deps` change.
@@ -23,10 +25,11 @@ const STAGGER_MS = 12;
  * a card that moved to another pile (and was re-mounted there) still animates.
  * Positions are tracked relative to the board, so scrolling never causes a flight.
  */
-export function useCardFlight(deps: readonly unknown[], { spawnFrom }: UseCardFlightOptions = {}) {
+export function useCardFlight(deps: readonly unknown[], { spawnFrom, dealKey }: UseCardFlightOptions = {}) {
   const boardRef = useRef<HTMLDivElement | null>(null);
   const lastPositions = useRef(new Map<string, Point>());
   const origins = useRef(new Map<string, Point>());
+  const lastDealKey = useRef(dealKey);
 
   /** Start a card's next flight from a viewport position instead of its last pile position (e.g. where a drag was released). */
   const setFlightOrigins = useCallback((viewportPositions: Map<string, Point>) => {
@@ -38,6 +41,11 @@ export function useCardFlight(deps: readonly unknown[], { spawnFrom }: UseCardFl
     if (!board) return;
 
     const boardRect = board.getBoundingClientRect();
+    // A new deal: forget where the old cards were, so everything is dealt from the deck
+    if (lastDealKey.current !== dealKey) {
+      lastDealKey.current = dealKey;
+      lastPositions.current = new Map();
+    }
     const previous = lastPositions.current;
     const overrides = origins.current;
     const next = new Map<string, Point>();

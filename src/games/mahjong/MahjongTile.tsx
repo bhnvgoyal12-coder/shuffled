@@ -7,6 +7,8 @@ interface MahjongTileProps {
   isFree: boolean;
   isSelected: boolean;
   isHinted: boolean;
+  /** The tile has been matched and is on its way out */
+  isLeaving?: boolean;
   onClick: (tileId: string) => void;
 }
 
@@ -15,6 +17,7 @@ export const MahjongTileComponent = React.memo(function MahjongTileComponent({
   isFree,
   isSelected,
   isHinted,
+  isLeaving = false,
   onClick,
 }: MahjongTileProps) {
   const { tile, position } = placed;
@@ -25,9 +28,13 @@ export const MahjongTileComponent = React.memo(function MahjongTileComponent({
     top: `calc(${position.row} * var(--mahjong-tile-height) / 2 + ${4 - position.layer} * var(--mahjong-depth))`,
     // Tiles further right / down overlap the visible edge of their neighbours
     zIndex: position.layer * 1000 + position.row * 30 + position.col,
-  };
+    // Lower layers land first when a board is laid out
+    '--enter-delay': `${position.layer * 110 + position.col * 6}ms`,
+  } as React.CSSProperties;
 
-  const stateClass = isSelected
+  const stateClass = isLeaving
+    ? 'mahjong-tile--leaving'
+    : isSelected
     ? 'mahjong-tile--selected'
     : isHinted
       ? 'mahjong-tile--hinted'
@@ -40,10 +47,11 @@ export const MahjongTileComponent = React.memo(function MahjongTileComponent({
       type="button"
       style={style}
       className={`mahjong-tile ${stateClass}`}
-      onClick={() => onClick(tile.id)}
+      onClick={isLeaving ? undefined : () => onClick(tile.id)}
+      aria-hidden={isLeaving || undefined}
       aria-label={`${tile.label}${isFree ? '' : ' (blocked)'}`}
       aria-pressed={isSelected}
-      tabIndex={isFree ? 0 : -1}
+      tabIndex={isFree && !isLeaving ? 0 : -1}
     >
       {/* Suit indicator (small, top-left) */}
       {tile.suit && (

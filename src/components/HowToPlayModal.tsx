@@ -14,40 +14,21 @@ export function HowToPlayModal({ gameType, onClose }: HowToPlayModalProps) {
       role="dialog"
       aria-modal="true"
       aria-label="How to play"
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[20000] animate-[fadeIn_0.3s_ease] backdrop-blur-[4px]"
+      className="sheet-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        className="win-card-bg rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-[scaleIn_0.3s_ease] w-[90vw] max-w-[380px] max-h-[85vh] overflow-y-auto relative"
-        style={{ padding: 'clamp(20px, 4vw, 32px)' }}
-      >
+      <div className="sheet-panel">
         {/* Header */}
-        <div className="flex justify-between items-center mb-5">
-          <h2
-            className="font-bold text-[#2e7d32] m-0"
-            style={{ fontSize: 'clamp(20px, 5vw, 26px)' }}
-          >
-            How to Play
-          </h2>
-          <button
-            className="bg-transparent border-none text-[#999] cursor-pointer hover:text-[#333] transition-colors leading-none"
-            style={{ fontSize: 'clamp(24px, 5vw, 30px)' }}
-            onClick={onClose}
-            aria-label="Close"
-          >
+        <div className="flex justify-between items-center gap-3 mb-5">
+          <div>
+            <h2 className="sheet-title">How to play</h2>
+            <p className="m-0 mt-0.5 text-[var(--text-soft)]" style={{ fontSize: 14 }}>
+              {gameType === 'klondike' ? 'Classic Solitaire' : gameType === 'freecell' ? 'FreeCell' : gameType === 'spider' ? 'Spider Solitaire' : gameType === 'mahjong' ? 'Mahjong' : 'Word Search'}
+            </p>
+          </div>
+          <button className="sheet-close" onClick={onClose} aria-label="Close">
             &times;
           </button>
-        </div>
-
-        {/* Game name badge */}
-        <div
-          className="inline-block bg-[#2e7d32]/10 text-[#2e7d32] font-semibold rounded-full mb-4"
-          style={{
-            padding: 'clamp(3px, 0.8vw, 5px) clamp(10px, 2.5vw, 14px)',
-            fontSize: 'clamp(11px, 2.5vw, 13px)',
-          }}
-        >
-          {gameType === 'klondike' ? 'Classic Solitaire' : gameType === 'freecell' ? 'FreeCell' : gameType === 'spider' ? 'Spider Solitaire' : gameType === 'mahjong' ? 'Mahjong' : 'Word Search'}
         </div>
 
         {gameType === 'klondike' && <KlondikeRules />}
@@ -63,13 +44,10 @@ export function HowToPlayModal({ gameType, onClose }: HowToPlayModalProps) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-4">
-      <h3
-        className="font-semibold text-[#2e7d32] m-0 mb-1"
-        style={{ fontSize: 'clamp(13px, 3vw, 15px)' }}
-      >
+      <h3 className="font-bold text-[var(--brass)] m-0 mb-1" style={{ fontSize: 15 }}>
         {title}
       </h3>
-      <div className="text-[#555] leading-relaxed" style={{ fontSize: 'clamp(12px, 2.8vw, 14px)' }}>
+      <div className="text-[var(--text)] leading-relaxed" style={{ fontSize: 15, opacity: 0.86 }}>
         {children}
       </div>
     </div>
@@ -95,7 +73,7 @@ function KlondikeRules() {
         <p className="m-0">Build up by suit from Ace to King. A card can be brought back down to the tableau if you need it, at a cost of 15 points.</p>
       </Section>
       <Section title="Tip">
-        <p className="m-0 text-[#888] italic">Focus on revealing face-down cards and freeing up columns for Kings.</p>
+        <p className="m-0 text-[var(--text-soft)]">Focus on revealing face-down cards and freeing up columns for Kings.</p>
       </Section>
     </>
   );
@@ -120,7 +98,7 @@ function FreeCellRules() {
         <p className="m-0">Tap a card to send it to the best available spot — a foundation, another column, or a free cell — or drag it exactly where you want it. The lightbulb suggests a move.</p>
       </Section>
       <Section title="Tip">
-        <p className="m-0 text-[#888] italic">Keep free cells open as long as possible. The more available, the larger groups you can move.</p>
+        <p className="m-0 text-[var(--text-soft)]">Keep free cells open as long as possible. The more available, the larger groups you can move.</p>
       </Section>
     </>
   );
@@ -142,7 +120,7 @@ function SpiderRules() {
         <p className="m-0">Choose difficulty in Settings: 1 suit (easy), 2 suits (medium), or 4 suits (hard).</p>
       </Section>
       <Section title="Tip">
-        <p className="m-0 text-[#888] italic">Build same-suit sequences whenever possible. Mixed-suit stacks block group moves.</p>
+        <p className="m-0 text-[var(--text-soft)]">Build same-suit sequences whenever possible. Mixed-suit stacks block group moves.</p>
       </Section>
     </>
   );
@@ -164,7 +142,7 @@ function WordSearchRules() {
         <p className="m-0">Earn points for each word found (longer words score more). Bonus points are awarded for completing a level.</p>
       </Section>
       <Section title="Tip">
-        <p className="m-0 text-[#888] italic">Look for less common letters first (Q, Z, X) to quickly spot word locations.</p>
+        <p className="m-0 text-[var(--text-soft)]">Look for less common letters first (Q, Z, X) to quickly spot word locations.</p>
       </Section>
     </>
   );
@@ -186,7 +164,7 @@ function MahjongRules() {
         <p className="m-0">Stuck? The lightbulb highlights a pair you can remove, and Shuffle rearranges the remaining tiles (-50 pts). Every new board can be cleared.</p>
       </Section>
       <Section title="Tip">
-        <p className="m-0 text-[#888] italic">Work from the top layers down. Prioritize removing tiles that free up others underneath.</p>
+        <p className="m-0 text-[var(--text-soft)]">Work from the top layers down. Prioritize removing tiles that free up others underneath.</p>
       </Section>
     </>
   );

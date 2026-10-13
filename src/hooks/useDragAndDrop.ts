@@ -52,6 +52,7 @@ export function useDragAndDrop<S>(options: DragAndDropOptions<S>) {
   const validTargetsRef = useRef<string[]>(NO_TARGETS);
   /** Until this timestamp, the click the browser fires after releasing a drag is swallowed. */
   const suppressClickUntil = useRef(0);
+  const tiltReset = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pointerIdRef = useRef<number | null>(null);
   const pointerTargetRef = useRef<HTMLElement | null>(null);
@@ -141,6 +142,14 @@ export function useDragAndDrop<S>(options: DragAndDropOptions<S>) {
         const x = e.clientX - dragRef.current.offsetX;
         const y = e.clientY - dragRef.current.offsetY;
         overlayRef.current.style.transform = `translate(${x}px, ${y}px)`;
+
+        // Lean into the direction of travel, and settle upright when the hand stops
+        const tilt = Math.max(-7, Math.min(7, e.movementX * 0.55));
+        overlayRef.current.style.setProperty('--drag-tilt', `${tilt}deg`);
+        if (tiltReset.current) clearTimeout(tiltReset.current);
+        tiltReset.current = setTimeout(() => {
+          overlayRef.current?.style.setProperty('--drag-tilt', '0deg');
+        }, 90);
       }
     };
 
@@ -234,6 +243,7 @@ export function useDragAndDrop<S>(options: DragAndDropOptions<S>) {
     document.addEventListener('click', handleClickCapture, true);
 
     return () => {
+      if (tiltReset.current) clearTimeout(tiltReset.current);
       document.removeEventListener('click', handleClickCapture, true);
       document.removeEventListener('pointermove', handleMove);
       document.removeEventListener('pointerup', handleUp);

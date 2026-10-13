@@ -52,27 +52,14 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
       role="dialog"
       aria-modal="true"
       aria-label="Settings"
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[20000] animate-[fadeIn_0.3s_ease] backdrop-blur-[4px]"
+      className="sheet-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        className="win-card-bg rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-[scaleIn_0.3s_ease] w-[90vw] max-w-[380px] max-h-[85vh] overflow-y-auto relative"
-        style={{ padding: 'clamp(20px, 4vw, 32px)' }}
-      >
+      <div className="sheet-panel">
         {/* Header */}
         <div className="flex justify-between items-center mb-5">
-          <h2
-            className="font-bold text-[#2e7d32] m-0"
-            style={{ fontSize: 'clamp(20px, 5vw, 26px)' }}
-          >
-            Settings
-          </h2>
-          <button
-            className="bg-transparent border-none text-[#999] cursor-pointer hover:text-[#333] transition-colors leading-none"
-            style={{ fontSize: 'clamp(24px, 5vw, 30px)' }}
-            onClick={onClose}
-            aria-label="Close settings"
-          >
+          <h2 className="sheet-title">Settings</h2>
+          <button className="sheet-close" onClick={onClose} aria-label="Close settings">
             &times;
           </button>
         </div>
@@ -80,24 +67,24 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
         {/* Draw Mode — Klondike only */}
         {(!gameType || gameType === 'klondike') && (
           <div className="mb-5">
-            <label className="block text-[#555] font-semibold mb-2" style={{ fontSize: 'clamp(12px, 3vw, 14px)' }}>
-              Draw Mode
+            <label className="block text-[var(--text)] font-semibold mb-2" style={{ fontSize: 15 }}>
+              Draw mode
             </label>
             {confirmDrawChange !== null ? (
               <div
-                className="bg-[#FFF3E0] rounded-lg text-[#E65100]"
-                style={{ padding: 'clamp(8px, 2vw, 12px)', fontSize: 'clamp(11px, 2.5vw, 13px)' }}
+                className="rounded-xl text-[var(--text)]"
+                style={{ padding: 12, fontSize: 14, background: 'rgba(222,195,120,0.12)', border: '1px solid rgba(222,195,120,0.35)' }}
               >
                 <p className="m-0 mb-2">Changing draw mode will start a new game.</p>
                 <div className="flex gap-2">
                   <button
-                    className="bg-[#E65100] text-white border-none rounded-md px-3 py-1.5 cursor-pointer font-medium text-xs hover:bg-[#BF360C] active:scale-[0.96] transition-[background,transform]"
+                    className="btn btn-primary" style={{ padding: '8px 16px', fontSize: 14 }}
                     onClick={confirmDrawModeChange}
                   >
-                    Continue
+                    Start new game
                   </button>
                   <button
-                    className="bg-transparent text-[#E65100] border border-[#E65100] rounded-md px-3 py-1.5 cursor-pointer font-medium text-xs hover:bg-[#FFF3E0] active:scale-[0.96] transition-[background,transform]"
+                    className="btn btn-quiet" style={{ padding: '8px 16px', fontSize: 14 }}
                     onClick={() => setConfirmDrawChange(null)}
                   >
                     Cancel
@@ -105,16 +92,16 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
                 </div>
               </div>
             ) : (
-              <div className="flex gap-1 bg-[#e8e8e8] rounded-lg p-1">
+              <div className="flex gap-1 rounded-full p-1" style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 {([1, 3] as DrawMode[]).map((mode) => (
                   <button
                     key={mode}
-                    className={`flex-1 border-none rounded-md py-2 cursor-pointer font-semibold transition-[background,color,box-shadow] duration-200 ${
+                    className={`flex-1 border-none rounded-full py-2.5 cursor-pointer font-bold transition-[background,color,box-shadow] duration-200 ${
                       settings.drawMode === mode
-                        ? 'bg-white text-[#2e7d32] shadow-[0_1px_3px_rgba(0,0,0,0.15)]'
-                        : 'bg-transparent text-[#666] hover:text-[#333]'
+                        ? 'bg-[var(--brass)] text-[#2a2008] shadow-[0_1px_4px_rgba(0,0,0,0.4)]'
+                        : 'bg-transparent text-[var(--text-soft)] hover:text-[var(--text)]'
                     }`}
-                    style={{ fontSize: 'clamp(12px, 2.8vw, 14px)' }}
+                    style={{ fontSize: 14 }}
                     onClick={() => handleDrawModeChange(mode)}
                   >
                     Draw {mode}
@@ -128,24 +115,24 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
         {/* Suit Count — Spider only */}
         {gameType === 'spider' && (
           <div className="mb-5">
-            <label className="block text-[#555] font-semibold mb-2" style={{ fontSize: 'clamp(12px, 3vw, 14px)' }}>
-              Suit Count
+            <label className="block text-[var(--text)] font-semibold mb-2" style={{ fontSize: 15 }}>
+              Suit count
             </label>
             {confirmSuitChange !== null ? (
               <div
-                className="bg-[#FFF3E0] rounded-lg text-[#E65100]"
-                style={{ padding: 'clamp(8px, 2vw, 12px)', fontSize: 'clamp(11px, 2.5vw, 13px)' }}
+                className="rounded-xl text-[var(--text)]"
+                style={{ padding: 12, fontSize: 14, background: 'rgba(222,195,120,0.12)', border: '1px solid rgba(222,195,120,0.35)' }}
               >
                 <p className="m-0 mb-2">Changing suit count will start a new game.</p>
                 <div className="flex gap-2">
                   <button
-                    className="bg-[#E65100] text-white border-none rounded-md px-3 py-1.5 cursor-pointer font-medium text-xs hover:bg-[#BF360C] active:scale-[0.96] transition-[background,transform]"
+                    className="btn btn-primary" style={{ padding: '8px 16px', fontSize: 14 }}
                     onClick={confirmSuitCountChange}
                   >
-                    Continue
+                    Start new game
                   </button>
                   <button
-                    className="bg-transparent text-[#E65100] border border-[#E65100] rounded-md px-3 py-1.5 cursor-pointer font-medium text-xs hover:bg-[#FFF3E0] active:scale-[0.96] transition-[background,transform]"
+                    className="btn btn-quiet" style={{ padding: '8px 16px', fontSize: 14 }}
                     onClick={() => setConfirmSuitChange(null)}
                   >
                     Cancel
@@ -153,16 +140,16 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
                 </div>
               </div>
             ) : (
-              <div className="flex gap-1 bg-[#e8e8e8] rounded-lg p-1">
+              <div className="flex gap-1 rounded-full p-1" style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 {([1, 2, 4] as SpiderSuitCount[]).map((count) => (
                   <button
                     key={count}
-                    className={`flex-1 border-none rounded-md py-2 cursor-pointer font-semibold transition-[background,color,box-shadow] duration-200 ${
+                    className={`flex-1 border-none rounded-full py-2.5 cursor-pointer font-bold transition-[background,color,box-shadow] duration-200 ${
                       settings.spiderSuitCount === count
-                        ? 'bg-white text-[#2e7d32] shadow-[0_1px_3px_rgba(0,0,0,0.15)]'
-                        : 'bg-transparent text-[#666] hover:text-[#333]'
+                        ? 'bg-[var(--brass)] text-[#2a2008] shadow-[0_1px_4px_rgba(0,0,0,0.4)]'
+                        : 'bg-transparent text-[var(--text-soft)] hover:text-[var(--text)]'
                     }`}
-                    style={{ fontSize: 'clamp(12px, 2.8vw, 14px)' }}
+                    style={{ fontSize: 14 }}
                     onClick={() => handleSuitCountChange(count)}
                   >
                     {count} {count === 1 ? 'Suit' : 'Suits'}
@@ -175,10 +162,10 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
 
         {/* Card Back Theme */}
         <div className="mb-5">
-          <label className="block text-[#555] font-semibold mb-2" style={{ fontSize: 'clamp(12px, 3vw, 14px)' }}>
-            Card Back
+          <label className="block text-[var(--text)] font-semibold mb-2" style={{ fontSize: 15 }}>
+            Card back
           </label>
-          <div className="flex gap-3 justify-start">
+          <div className="flex gap-3 justify-start flex-wrap">
             {THEME_KEYS.map((theme) => {
               const colors = CARD_BACK_THEMES[theme];
               const isSelected = settings.cardBackTheme === theme;
@@ -187,14 +174,14 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
                   key={theme}
                   className={`border-none cursor-pointer rounded-lg transition-[transform,box-shadow] duration-200 hover:scale-105 active:scale-95 ${
                     isSelected
-                      ? 'ring-2 ring-[#FFC107] ring-offset-2'
+                      ? 'ring-2 ring-[var(--brass)] ring-offset-2 ring-offset-[#141614]'
                       : ''
                   }`}
                   style={{
                     width: 'clamp(36px, 8vw, 48px)',
                     height: 'clamp(50px, 11vw, 67px)',
-                    background: `repeating-linear-gradient(45deg, ${colors.color1}, ${colors.color1} 2px, ${colors.color2} 2px, ${colors.color2} 4px)`,
-                    boxShadow: isSelected ? undefined : '0 1px 3px rgba(0,0,0,0.2)',
+                    background: `repeating-linear-gradient(45deg, rgba(255,255,255,0.14) 0 1.5px, transparent 1.5px 6px), repeating-linear-gradient(-45deg, rgba(255,255,255,0.14) 0 1.5px, transparent 1.5px 6px), linear-gradient(160deg, ${colors.color2}, ${colors.color1})`,
+                    border: '2px solid var(--ivory)',
                   }}
                   onClick={() => { trackSettingChange('cardBackTheme', theme); updateSetting('cardBackTheme', theme); }}
                   aria-label={`${theme} card back`}
@@ -207,8 +194,8 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
         {/* Sound Effects */}
         <div className="mb-5">
           <div className="flex items-center justify-between">
-            <label className="text-[#555] font-semibold" style={{ fontSize: 'clamp(12px, 3vw, 14px)' }}>
-              Sound Effects
+            <label className="text-[var(--text)] font-semibold" style={{ fontSize: 15 }}>
+              Sound effects
             </label>
             <ToggleSwitch
               label="Sound Effects"
@@ -222,11 +209,11 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
         <div className="mb-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <label className="text-[#555] font-semibold block" style={{ fontSize: 'clamp(12px, 3vw, 14px)' }}>
+              <label className="text-[var(--text)] font-semibold block" style={{ fontSize: 15 }}>
                 Timer
               </label>
-              <span className="text-[#999]" style={{ fontSize: 'clamp(10px, 2.2vw, 12px)' }}>
-                Show elapsed time, score drains over time
+              <span className="text-[var(--text-soft)] leading-snug block" style={{ fontSize: 13 }}>
+                Shows the clock; your score drains slowly as it runs
               </span>
             </div>
             <ToggleSwitch
@@ -242,10 +229,10 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
           <div className="mb-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <label className="text-[#555] font-semibold block" style={{ fontSize: 'clamp(12px, 3vw, 14px)' }}>
-                  Tap to Move
+                <label className="text-[var(--text)] font-semibold block" style={{ fontSize: 15 }}>
+                  Tap to move
                 </label>
-                <span className="text-[#999]" style={{ fontSize: 'clamp(10px, 2.2vw, 12px)' }}>
+                <span className="text-[var(--text-soft)] leading-snug block" style={{ fontSize: 13 }}>
                   One tap sends a card to its best spot. Off: tap a card, then tap where it goes
                 </span>
               </div>
@@ -263,11 +250,11 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
           <div className="mb-5">
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-[#555] font-semibold block" style={{ fontSize: 'clamp(12px, 3vw, 14px)' }}>
-                  Auto-Move to Foundation
+                <label className="text-[var(--text)] font-semibold block" style={{ fontSize: 15 }}>
+                  Auto-move to foundation
                 </label>
-                <span className="text-[#999]" style={{ fontSize: 'clamp(10px, 2.2vw, 12px)' }}>
-                  Automatically move safe cards up
+                <span className="text-[var(--text-soft)] leading-snug block" style={{ fontSize: 13 }}>
+                  Cards that are no longer needed go up by themselves
                 </span>
               </div>
               <ToggleSwitch
@@ -291,17 +278,17 @@ function ToggleSwitch({ label, checked, onChange }: { label: string; checked: bo
       aria-checked={checked}
       aria-label={label}
       className={`relative border-none rounded-full cursor-pointer transition-colors duration-200 shrink-0 ${
-        checked ? 'bg-[#2e7d32]' : 'bg-[#ccc]'
+        checked ? 'bg-[#4a9a14]' : 'bg-white/20'
       }`}
-      style={{ width: 'clamp(40px, 9vw, 48px)', height: 'clamp(22px, 5vw, 26px)' }}
+      style={{ width: 50, height: 30 }}
       onClick={() => onChange(!checked)}
     >
       <span
-        className="absolute top-[2px] bg-white rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-[left] duration-200"
+        className="absolute top-[2px] bg-white rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-[left] duration-200 ease-out"
         style={{
-          width: 'clamp(18px, 4vw, 22px)',
-          height: 'clamp(18px, 4vw, 22px)',
-          left: checked ? 'calc(100% - clamp(18px, 4vw, 22px) - 2px)' : '2px',
+          width: 26,
+          height: 26,
+          left: checked ? 22 : 2,
         }}
       />
     </button>
