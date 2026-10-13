@@ -1,5 +1,6 @@
 import type { GameType } from '../types';
 import { getStats, getWinPercent, formatBestTime } from '../utils/gameStats';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 interface StatsModalProps {
   gameType: GameType;
@@ -17,9 +18,13 @@ const GAME_NAMES: Record<GameType, string> = {
 export function StatsModal({ gameType, onClose }: StatsModalProps) {
   const stats = getStats(gameType);
   const winPct = getWinPercent(stats);
+  useEscapeKey(onClose);
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Statistics"
       className="fixed inset-0 z-[20000] flex items-center justify-center bg-black/70"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -42,6 +47,7 @@ export function StatsModal({ gameType, onClose }: StatsModalProps) {
             onClick={onClose}
             className="text-white/50 hover:text-white transition-colors rounded-full flex items-center justify-center"
             style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', fontSize: 18 }}
+            aria-label="Close statistics"
           >
             ×
           </button>

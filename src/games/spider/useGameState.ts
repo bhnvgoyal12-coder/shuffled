@@ -2,6 +2,7 @@ import { useReducer, useCallback, useEffect } from 'react';
 import type { Card, SpiderGameState, SpiderGameAction, SpiderPileId, SpiderHistoryEntry } from './types';
 import { dealSpiderGame, isValidSpiderMove, checkCompletedRun, canDealStock, getPileCards } from './gameLogic';
 import { useSettings } from '../../contexts/SettingsContext';
+import { LEGACY_GAME_ID } from '../../utils/gameId';
 
 const STORAGE_KEY = 'shuffled-spider-state';
 
@@ -63,6 +64,7 @@ function applyMove(
   const hasWon = completedSuits === 8;
 
   return {
+    gameId: state.gameId,
     stock: newStock,
     tableau: newTableau,
     completedSuits,
@@ -106,6 +108,7 @@ function dealStock(state: SpiderGameState): SpiderGameState {
   }
 
   return {
+    gameId: state.gameId,
     stock: newStock,
     tableau: newTableau,
     completedSuits,
@@ -133,6 +136,7 @@ export function gameReducer(state: SpiderGameState, action: SpiderGameAction): S
       const prev = state.history[state.history.length - 1];
       return {
         ...prev,
+        gameId: state.gameId,
         history: state.history.slice(0, -1),
         hasWon: false,
         selectedCard: null,
@@ -183,6 +187,7 @@ function loadSavedState(): SpiderGameState | null {
     const parsed = JSON.parse(raw) as SpiderGameState;
     if (!parsed.tableau || parsed.tableau.length !== 10) return null;
     parsed.selectedCard = null;
+    if (!parsed.gameId) parsed.gameId = LEGACY_GAME_ID;
     return parsed;
   } catch {
     return null;

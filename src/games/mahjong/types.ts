@@ -41,6 +41,8 @@ export interface MahjongHistoryEntry {
 }
 
 export interface MahjongGameState {
+  /** Identifies this deal (ties the clock and stats to it) */
+  gameId: string;
   tiles: PlacedTile[];
   removedPairs: [string, string][];
   selectedTile: SelectedTile | null;

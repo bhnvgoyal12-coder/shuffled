@@ -124,106 +124,47 @@ export function getSuitSymbol(tile: MahjongTile): string {
 }
 
 // ── Classic Turtle Layout (144 positions) ─────────────────────
-// Grid uses half-unit positions for offset layers.
-// Each tile occupies 2 columns × 2 rows in the grid coordinate system
-// to allow half-tile offsets on upper layers.
+// Grid uses half-tile units: a tile occupies 2 columns × 2 rows, so a tile at
+// col C touches the tiles at col C-2 (left) and C+2 (right). Odd rows / columns
+// are the half-tile offsets used by the three side tiles and the cap.
+
+function tileRow(row: number, firstCol: number, lastCol: number, layer: number): LayoutPosition[] {
+  const positions: LayoutPosition[] = [];
+  for (let col = firstCol; col <= lastCol; col += 2) positions.push({ row, col, layer });
+  return positions;
+}
+
+function tileBlock(firstRow: number, lastRow: number, firstCol: number, lastCol: number, layer: number): LayoutPosition[] {
+  const positions: LayoutPosition[] = [];
+  for (let row = firstRow; row <= lastRow; row += 2) positions.push(...tileRow(row, firstCol, lastCol, layer));
+  return positions;
+}
 
 export const TURTLE_LAYOUT: LayoutPosition[] = [
-  // ═══ Layer 0 (ground level) — 86 tiles ═══
-  // Row 0: 12 tiles
-  { row: 0, col: 2, layer: 0 }, { row: 0, col: 4, layer: 0 },
-  { row: 0, col: 6, layer: 0 }, { row: 0, col: 8, layer: 0 },
-  { row: 0, col: 10, layer: 0 }, { row: 0, col: 12, layer: 0 },
-  { row: 0, col: 14, layer: 0 }, { row: 0, col: 16, layer: 0 },
-  { row: 0, col: 18, layer: 0 }, { row: 0, col: 20, layer: 0 },
-  { row: 0, col: 22, layer: 0 }, { row: 0, col: 24, layer: 0 },
-  // Row 1: 8 tiles (narrower)
-  { row: 2, col: 4, layer: 0 }, { row: 2, col: 6, layer: 0 },
-  { row: 2, col: 8, layer: 0 }, { row: 2, col: 10, layer: 0 },
-  { row: 2, col: 16, layer: 0 }, { row: 2, col: 18, layer: 0 },
-  { row: 2, col: 20, layer: 0 }, { row: 2, col: 22, layer: 0 },
-  // Row 2: 10 tiles
-  { row: 4, col: 2, layer: 0 }, { row: 4, col: 4, layer: 0 },
-  { row: 4, col: 6, layer: 0 }, { row: 4, col: 8, layer: 0 },
-  { row: 4, col: 10, layer: 0 }, { row: 4, col: 12, layer: 0 },
-  { row: 4, col: 14, layer: 0 }, { row: 4, col: 16, layer: 0 },
-  { row: 4, col: 18, layer: 0 }, { row: 4, col: 20, layer: 0 },
-  // Row 3: 12 tiles + 2 wings
-  { row: 6, col: 0, layer: 0 }, // left wing
-  { row: 6, col: 2, layer: 0 }, { row: 6, col: 4, layer: 0 },
-  { row: 6, col: 6, layer: 0 }, { row: 6, col: 8, layer: 0 },
-  { row: 6, col: 10, layer: 0 }, { row: 6, col: 12, layer: 0 },
-  { row: 6, col: 14, layer: 0 }, { row: 6, col: 16, layer: 0 },
-  { row: 6, col: 18, layer: 0 }, { row: 6, col: 20, layer: 0 },
-  { row: 6, col: 22, layer: 0 }, { row: 6, col: 24, layer: 0 },
-  { row: 6, col: 26, layer: 0 }, // right wing
-  // Row 4: 12 tiles
-  { row: 8, col: 2, layer: 0 }, { row: 8, col: 4, layer: 0 },
-  { row: 8, col: 6, layer: 0 }, { row: 8, col: 8, layer: 0 },
-  { row: 8, col: 10, layer: 0 }, { row: 8, col: 12, layer: 0 },
-  { row: 8, col: 14, layer: 0 }, { row: 8, col: 16, layer: 0 },
-  { row: 8, col: 18, layer: 0 }, { row: 8, col: 20, layer: 0 },
-  { row: 8, col: 22, layer: 0 }, { row: 8, col: 24, layer: 0 },
-  // Row 5: 10 tiles
-  { row: 10, col: 2, layer: 0 }, { row: 10, col: 4, layer: 0 },
-  { row: 10, col: 6, layer: 0 }, { row: 10, col: 8, layer: 0 },
-  { row: 10, col: 10, layer: 0 }, { row: 10, col: 12, layer: 0 },
-  { row: 10, col: 14, layer: 0 }, { row: 10, col: 16, layer: 0 },
-  { row: 10, col: 18, layer: 0 }, { row: 10, col: 20, layer: 0 },
-  // Row 6: 8 tiles
-  { row: 12, col: 4, layer: 0 }, { row: 12, col: 6, layer: 0 },
-  { row: 12, col: 8, layer: 0 }, { row: 12, col: 10, layer: 0 },
-  { row: 12, col: 16, layer: 0 }, { row: 12, col: 18, layer: 0 },
-  { row: 12, col: 20, layer: 0 }, { row: 12, col: 22, layer: 0 },
-  // Row 7: 12 tiles
-  { row: 14, col: 2, layer: 0 }, { row: 14, col: 4, layer: 0 },
-  { row: 14, col: 6, layer: 0 }, { row: 14, col: 8, layer: 0 },
-  { row: 14, col: 10, layer: 0 }, { row: 14, col: 12, layer: 0 },
-  { row: 14, col: 14, layer: 0 }, { row: 14, col: 16, layer: 0 },
-  { row: 14, col: 18, layer: 0 }, { row: 14, col: 20, layer: 0 },
-  { row: 14, col: 22, layer: 0 }, { row: 14, col: 24, layer: 0 },
+  // ═══ Layer 0 — 87 tiles: eight rows plus the three side tiles ═══
+  ...tileRow(0, 2, 24, 0),   // 12
+  ...tileRow(2, 6, 20, 0),   // 8
+  ...tileRow(4, 4, 22, 0),   // 10
+  ...tileRow(6, 2, 24, 0),   // 12
+  ...tileRow(8, 2, 24, 0),   // 12
+  ...tileRow(10, 4, 22, 0),  // 10
+  ...tileRow(12, 6, 20, 0),  // 8
+  ...tileRow(14, 2, 24, 0),  // 12
+  { row: 7, col: 0, layer: 0 },   // left side, between the two middle rows
+  { row: 7, col: 26, layer: 0 },  // right side…
+  { row: 7, col: 28, layer: 0 },  // …and the tile beyond it
 
-  // ═══ Layer 1 — 36 tiles ═══
-  // Row 0: 6 tiles
-  { row: 1, col: 5, layer: 1 }, { row: 1, col: 7, layer: 1 },
-  { row: 1, col: 9, layer: 1 }, { row: 1, col: 17, layer: 1 },
-  { row: 1, col: 19, layer: 1 }, { row: 1, col: 21, layer: 1 },
-  // Row 1: 6 tiles
-  { row: 3, col: 5, layer: 1 }, { row: 3, col: 7, layer: 1 },
-  { row: 3, col: 9, layer: 1 }, { row: 3, col: 17, layer: 1 },
-  { row: 3, col: 19, layer: 1 }, { row: 3, col: 21, layer: 1 },
-  // Row 2: 6 tiles
-  { row: 5, col: 5, layer: 1 }, { row: 5, col: 7, layer: 1 },
-  { row: 5, col: 9, layer: 1 }, { row: 5, col: 17, layer: 1 },
-  { row: 5, col: 19, layer: 1 }, { row: 5, col: 21, layer: 1 },
-  // Row 3: 6 tiles
-  { row: 9, col: 5, layer: 1 }, { row: 9, col: 7, layer: 1 },
-  { row: 9, col: 9, layer: 1 }, { row: 9, col: 17, layer: 1 },
-  { row: 9, col: 19, layer: 1 }, { row: 9, col: 21, layer: 1 },
-  // Row 4: 6 tiles
-  { row: 11, col: 5, layer: 1 }, { row: 11, col: 7, layer: 1 },
-  { row: 11, col: 9, layer: 1 }, { row: 11, col: 17, layer: 1 },
-  { row: 11, col: 19, layer: 1 }, { row: 11, col: 21, layer: 1 },
-  // Row 5: 6 tiles
-  { row: 13, col: 5, layer: 1 }, { row: 13, col: 7, layer: 1 },
-  { row: 13, col: 9, layer: 1 }, { row: 13, col: 17, layer: 1 },
-  { row: 13, col: 19, layer: 1 }, { row: 13, col: 21, layer: 1 },
-
-  // ═══ Layer 2 — 16 tiles (4×4 center block) ═══
-  { row: 4, col: 8, layer: 2 }, { row: 4, col: 10, layer: 2 },
-  { row: 4, col: 16, layer: 2 }, { row: 4, col: 18, layer: 2 },
-  { row: 6, col: 8, layer: 2 }, { row: 6, col: 10, layer: 2 },
-  { row: 6, col: 16, layer: 2 }, { row: 6, col: 18, layer: 2 },
-  { row: 8, col: 8, layer: 2 }, { row: 8, col: 10, layer: 2 },
-  { row: 8, col: 16, layer: 2 }, { row: 8, col: 18, layer: 2 },
-  { row: 10, col: 8, layer: 2 }, { row: 10, col: 10, layer: 2 },
-  { row: 10, col: 16, layer: 2 }, { row: 10, col: 18, layer: 2 },
-
-  // ═══ Layer 3 — 4 tiles (2×2 center) ═══
-  { row: 5, col: 11, layer: 3 }, { row: 5, col: 15, layer: 3 },
-  { row: 9, col: 11, layer: 3 }, { row: 9, col: 15, layer: 3 },
-
-  // ═══ Layer 4 — 2 tiles (cap) ═══
-  { row: 7, col: 12, layer: 4 }, { row: 7, col: 14, layer: 4 },
+  // ═══ Layer 1 — 36 tiles (6×6) ═══
+  ...tileBlock(2, 12, 8, 18, 1),
+  // ═══ Layer 2 — 16 tiles (4×4) ═══
+  ...tileBlock(4, 10, 10, 16, 2),
+  // ═══ Layer 3 — 4 tiles (2×2) ═══
+  ...tileBlock(6, 8, 12, 14, 3),
+  // ═══ Layer 4 — the cap, resting on all four tiles below ═══
+  { row: 7, col: 13, layer: 4 },
 ];
-// Total: 86 (layer 0) + 36 (layer 1) + 16 (layer 2) + 4 (layer 3) + 2 (layer 4) = 144
+// Total: 87 + 36 + 16 + 4 + 1 = 144
+
+/** Size of the layout in half-tile units (columns × rows). */
+export const BOARD_COLS = 30;
+export const BOARD_ROWS = 16;

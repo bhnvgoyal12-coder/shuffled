@@ -1,5 +1,6 @@
 import type { MahjongTile, PlacedTile, LayoutPosition, MahjongGameState } from './types';
 import { createTileSet, TURTLE_LAYOUT } from './constants';
+import { newGameId } from '../../utils/gameId';
 
 // ── Shuffle ───────────────────────────────────────────────────
 
@@ -12,17 +13,80 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
+// ── Solvable arrangements ─────────────────────────────────────
+
+const ARRANGE_ATTEMPTS = 40;
+
+export interface SolvableArrangement {
+  tiles: PlacedTile[];
+  /** Pairs of tile ids which, removed in this order, clear the board. */
+  solution: [string, string][];
+}
+
+/**
+ * Lay the tiles out on the given positions so the board can be cleared.
+ *
+ * Works backwards from a finished game: repeatedly take two positions that are
+ * free on the (shrinking) board and give them a matching pair. Removing the
+ * pairs in that same order is then always a valid solution.
+ * Returns null if this attempt painted itself into a corner (or the tiles
+ * cannot be split into matching pairs at all).
+ */
+export function tryArrangeSolvable(tiles: MahjongTile[], positions: LayoutPosition[]): SolvableArrangement | null {
+  const byKey = new Map<string, MahjongTile[]>();
+  for (const tile of tiles) {
+    const group = byKey.get(tile.matchKey);
+    if (group) group.push(tile);
+    else byKey.set(tile.matchKey, [tile]);
+  }
+  const pairs: [MahjongTile, MahjongTile][] = [];
+  for (const group of byKey.values()) {
+    if (group.length % 2 !== 0) return null;
+    const shuffled = shuffleArray(group);
+    for (let i = 0; i < shuffled.length; i += 2) pairs.push([shuffled[i], shuffled[i + 1]]);
+  }
+
+  // Placeholder tiles, one per position, standing in for "something is here"
+  let remaining: PlacedTile[] = positions.map((position, i) => ({
+    tile: { id: `slot-${i}` } as MahjongTile,
+    position,
+  }));
+  const slotIndex = new Map(remaining.map((slot, i) => [slot.tile.id, i]));
+  const assigned: MahjongTile[] = new Array(positions.length);
+  const solution: [string, string][] = [];
+
+  for (const [a, b] of shuffleArray(pairs)) {
+    const free = shuffleArray(getFreeTiles(remaining));
+    if (free.length < 2) return null;
+    const [first, second] = free;
+    assigned[slotIndex.get(first.tile.id)!] = a;
+    assigned[slotIndex.get(second.tile.id)!] = b;
+    solution.push([a.id, b.id]);
+    remaining = remaining.filter(slot => slot !== first && slot !== second);
+  }
+
+  return {
+    tiles: positions.map((position, i) => ({ tile: assigned[i], position })),
+    solution,
+  };
+}
+
+function arrangeTiles(tiles: MahjongTile[], positions: LayoutPosition[]): PlacedTile[] {
+  for (let attempt = 0; attempt < ARRANGE_ATTEMPTS; attempt++) {
+    const arranged = tryArrangeSolvable(tiles, positions);
+    if (arranged) return arranged.tiles;
+  }
+  // No guaranteed-solvable arrangement found — fall back to a plain shuffle
+  const shuffled = shuffleArray(tiles);
+  return positions.map((position, i) => ({ tile: shuffled[i], position }));
+}
+
 // ── Deal ──────────────────────────────────────────────────────
 
 export function dealGame(layout: LayoutPosition[] = TURTLE_LAYOUT): MahjongGameState {
-  const tiles = shuffleArray(createTileSet());
-  const placed: PlacedTile[] = layout.map((pos, i) => ({
-    tile: tiles[i],
-    position: pos,
-  }));
-
   return {
-    tiles: placed,
+    gameId: newGameId(),
+    tiles: arrangeTiles(createTileSet(), layout),
     removedPairs: [],
     selectedTile: null,
     moves: 0,
@@ -151,6 +215,7 @@ export function removePair(
   const hasLost = !hasWon && findValidPairs(newTiles).length === 0;
 
   return {
+    gameId: state.gameId,
     tiles: newTiles,
     removedPairs: [...state.removedPairs, [tileId1, tileId2]],
     selectedTile: null,
@@ -165,12 +230,11 @@ export function removePair(
 // ── Shuffle remaining tiles ───────────────────────────────────
 
 export function shuffleRemainingTiles(state: MahjongGameState): MahjongGameState {
-  const positions = state.tiles.map(t => t.position);
-  const shuffledTiles = shuffleArray(state.tiles.map(t => t.tile));
-  const newTiles: PlacedTile[] = positions.map((pos, i) => ({
-    tile: shuffledTiles[i],
-    position: pos,
-  }));
+  // Same positions, new faces — arranged so the rest of the board can be cleared
+  const newTiles = arrangeTiles(
+    state.tiles.map(t => t.tile),
+    state.tiles.map(t => t.position),
+  );
 
   const hasLost = findValidPairs(newTiles).length === 0;
 

@@ -7,7 +7,7 @@ interface MahjongTileProps {
   isFree: boolean;
   isSelected: boolean;
   isHinted: boolean;
-  onClick: () => void;
+  onClick: (tileId: string) => void;
 }
 
 export const MahjongTileComponent = React.memo(function MahjongTileComponent({
@@ -18,77 +18,42 @@ export const MahjongTileComponent = React.memo(function MahjongTileComponent({
   onClick,
 }: MahjongTileProps) {
   const { tile, position } = placed;
-  const layerOffset = 2;
 
+  // Each layer is shifted up and to the left by the thickness of a tile
   const style: React.CSSProperties = {
-    position: 'absolute',
-    width: 'var(--mahjong-tile-width)',
-    height: 'var(--mahjong-tile-height)',
-    left: `calc(${position.col} * var(--mahjong-tile-width) / 2 - ${position.layer * layerOffset}px)`,
-    top: `calc(${position.row} * var(--mahjong-tile-height) / 2 - ${position.layer * layerOffset}px)`,
-    zIndex: position.layer * 100 + position.row,
-    transition: 'transform 0.15s, box-shadow 0.15s, opacity 0.15s',
-    transform: isSelected ? 'translateY(-3px)' : undefined,
+    left: `calc(${position.col} * var(--mahjong-tile-width) / 2 + ${4 - position.layer} * var(--mahjong-depth))`,
+    top: `calc(${position.row} * var(--mahjong-tile-height) / 2 + ${4 - position.layer} * var(--mahjong-depth))`,
+    // Tiles further right / down overlap the visible edge of their neighbours
+    zIndex: position.layer * 1000 + position.row * 30 + position.col,
   };
 
-  const shadowSize = position.layer * 2;
+  const stateClass = isSelected
+    ? 'mahjong-tile--selected'
+    : isHinted
+      ? 'mahjong-tile--hinted'
+      : isFree
+        ? 'mahjong-tile--free'
+        : 'mahjong-tile--blocked';
 
   return (
-    <div
+    <button
+      type="button"
       style={style}
-      className={`rounded-md cursor-pointer ${!isFree ? 'opacity-70 cursor-default' : ''}`}
-      onClick={isFree ? onClick : undefined}
+      className={`mahjong-tile ${stateClass}`}
+      onClick={() => onClick(tile.id)}
+      aria-label={`${tile.label}${isFree ? '' : ' (blocked)'}`}
+      aria-pressed={isSelected}
+      tabIndex={isFree ? 0 : -1}
     >
-      <div
-        className={`w-full h-full rounded-md flex flex-col items-center justify-center relative overflow-hidden select-none ${
-          isSelected ? 'ring-2 ring-[#FFC107] ring-offset-1' : ''
-        } ${isHinted ? 'ring-2 ring-[#FFC107] animate-pulse' : ''}`}
-        style={{
-          background: isFree
-            ? 'linear-gradient(145deg, #fffff0, #e8e0c8)'
-            : 'linear-gradient(145deg, #e8e0c8, #d0c8b0)',
-          boxShadow: `${shadowSize + 1}px ${shadowSize + 1}px ${shadowSize + 2}px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.5)`,
-          border: '1px solid #b8a880',
-        }}
-      >
-        {/* Suit indicator (small, top-left) */}
-        {tile.suit && (
-          <span
-            className="absolute leading-none opacity-60"
-            style={{
-              top: 'clamp(1px, 0.3vw, 3px)',
-              left: 'clamp(2px, 0.5vw, 4px)',
-              fontSize: 'calc(var(--mahjong-tile-font-size) * 0.35)',
-              color: tile.color,
-            }}
-          >
-            {getSuitSymbol(tile)}
-          </span>
-        )}
-
-        {/* Main symbol */}
-        <span
-          className="font-bold leading-none"
-          style={{
-            fontSize: 'var(--mahjong-tile-font-size)',
-            color: tile.color,
-          }}
-        >
-          {tile.symbol}
+      {/* Suit indicator (small, top-left) */}
+      {tile.suit && (
+        <span className="mahjong-tile__suit" style={{ color: tile.color }}>
+          {getSuitSymbol(tile)}
         </span>
-
-        {/* Category label (small, bottom) */}
-        <span
-          className="leading-none text-center truncate w-full opacity-50"
-          style={{
-            fontSize: 'calc(var(--mahjong-tile-font-size) * 0.28)',
-            color: '#555',
-            paddingInline: '1px',
-          }}
-        >
-          {tile.suit ? tile.suit.charAt(0).toUpperCase() : tile.label}
-        </span>
-      </div>
-    </div>
+      )}
+      <span className="mahjong-tile__symbol" style={{ color: tile.color }}>
+        {tile.symbol}
+      </span>
+    </button>
   );
 });

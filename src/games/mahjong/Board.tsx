@@ -2,20 +2,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMahjongGameState } from './useGameState';
 import { useSound } from '../../hooks/useSound';
 import { getFreeTiles, getHint } from './gameLogic';
+import { BOARD_COLS, BOARD_ROWS } from './constants';
 import { MahjongTileComponent } from './MahjongTile';
-import { TopBar } from '../../components/TopBar';
+import { TopBar, TopBarButton, TopBarStat } from '../../components/TopBar';
 import { WinOverlay } from '../../components/WinOverlay';
 import { SettingsModal } from '../../components/SettingsModal';
 import { HowToPlayModal } from '../../components/HowToPlayModal';
-
+import { StatsModal } from '../../components/StatsModal';
 
 import { useSettings } from '../../contexts/SettingsContext';
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
 import { trackNewGame, trackGameWon, trackGameLost, trackUndo, trackHint, trackShuffle, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
-import { saveBestScore } from '../../utils/highScores';
-import { recordGamePlayed, recordGameWon, recordGameLost as recordLost } from '../../utils/gameStats';
-import { StatsModal } from '../../components/StatsModal';
+import { getBestScore, saveBestScore } from '../../utils/highScores';
+import { recordGameStarted, recordGameWon, recordGameLost } from '../../utils/gameStats';
+
+const HINT_MS = 2500;
+
+type OpenModal = 'settings' | 'help' | 'stats' | null;
 
 interface MahjongBoardProps {
   onGoHome?: () => void;
@@ -26,25 +30,26 @@ export function Board({ onGoHome }: MahjongBoardProps) {
   const { settings } = useSettings();
   const { play } = useSound();
 
-  const { elapsedSeconds, resetTimer, formattedTime } = useGameTimer({
+  const [openModal, setOpenModal] = useState<OpenModal>(null);
+
+  // The clock starts with the first pair, and stops while a menu is open
+  const hasStarted = state.moves > 0 || state.history.length > 0;
+  const isOver = state.hasWon || state.hasLost;
+  const { elapsedSeconds, formattedTime } = useGameTimer({
     gameType: 'mahjong',
-    isGameOver: state.hasWon || state.hasLost,
-    timerEnabled: settings.timerEnabled,
+    gameId: state.gameId,
+    isRunning: hasStarted && !isOver && openModal === null,
   });
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
-  const [statsOpen, setStatsOpen] = useState(false);
+  useEffect(() => {
+    if (hasStarted) recordGameStarted('mahjong', state.gameId);
+  }, [hasStarted, state.gameId]);
 
   const handleNewGame = useCallback(() => {
     trackNewGame('mahjong');
-    recordGamePlayed('mahjong');
     newGame();
-    resetTimer();
-  }, [newGame, resetTimer]);
-
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [hintPair, setHintPair] = useState<[string, string] | null>(null);
+  }, [newGame]);
 
   // Compute free tiles for visual state
   const freeTileIds = useMemo(
@@ -61,13 +66,19 @@ export function Board({ onGoHome }: MahjongBoardProps) {
     [freeTileIds, selectTile, play]
   );
 
+  // Hint — remembered with the board it was computed for, so it clears when tiles change
+  const [hintState, setHintState] = useState<{ pair: [string, string]; tiles: unknown } | null>(null);
+  const hintPair = hintState && hintState.tiles === state.tiles ? hintState.pair : null;
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (hintTimer.current) clearTimeout(hintTimer.current); }, []);
+
   const handleHint = useCallback(() => {
     trackHint();
     const pair = getHint(state.tiles);
-    if (pair) {
-      setHintPair(pair);
-      setTimeout(() => setHintPair(null), 2000);
-    }
+    if (!pair) return;
+    setHintState({ pair, tiles: state.tiles });
+    if (hintTimer.current) clearTimeout(hintTimer.current);
+    hintTimer.current = setTimeout(() => setHintState(null), HINT_MS);
   }, [state.tiles]);
 
   const handleShuffle = useCallback(() => {
@@ -76,41 +87,58 @@ export function Board({ onGoHome }: MahjongBoardProps) {
     play('stockClick');
   }, [shuffle, play]);
 
-  // Board dimensions from layout
-  const boardDimensions = useMemo(() => {
-    if (state.tiles.length === 0) return { cols: 0, rows: 0 };
-    const maxCol = Math.max(...state.tiles.map(t => t.position.col)) + 2;
-    const maxRow = Math.max(...state.tiles.map(t => t.position.row)) + 2;
-    return { cols: maxCol, rows: maxRow };
+  const handleUndo = useCallback(() => {
+    if (state.history.length === 0) return;
+    trackUndo('mahjong');
+    undo();
+  }, [state.history.length, undo]);
+
+  // Board size in half-tile units — at least the standard layout, larger if a saved game needs it
+  const boardSize = useMemo(() => {
+    let cols = BOARD_COLS;
+    let rows = BOARD_ROWS;
+    for (const t of state.tiles) {
+      cols = Math.max(cols, t.position.col + 2);
+      rows = Math.max(rows, t.position.row + 2);
+    }
+    return { cols, rows };
   }, [state.tiles]);
 
-  // Win sound + analytics + high score
-  const prevWon = useRef(false);
-  const prevLost = useRef(false);
-  const [isNewBest, setIsNewBest] = useState(false);
-  useEffect(() => {
-    if (state.hasWon && !prevWon.current) {
-      play('winCelebration');
-      trackGameWon('mahjong', state.moves, elapsedSeconds, state.score);
-      recordGameWon('mahjong', elapsedSeconds);
-      const newBest = saveBestScore('mahjong', {
-        score: displayScore,
-        moves: state.moves,
-        elapsedSeconds,
-        date: Date.now(),
-      });
-      setIsNewBest(newBest);
-    }
-    if (state.hasLost && !state.hasWon && !prevLost.current) {
-      trackGameLost('mahjong', state.moves);
-      recordLost('mahjong');
-    }
-    prevWon.current = state.hasWon;
-    prevLost.current = state.hasLost;
-  }, [state.hasWon, state.hasLost, play, state.moves, elapsedSeconds, state.score, displayScore]);
+  // Winning / losing
+  const [bestBefore, setBestBefore] = useState(() => ({
+    gameId: state.gameId,
+    score: getBestScore('mahjong')?.score ?? null,
+  }));
+  if (bestBefore.gameId !== state.gameId) {
+    setBestBefore({ gameId: state.gameId, score: getBestScore('mahjong')?.score ?? null });
+  }
+  const isNewBest = state.hasWon && (bestBefore.score === null || displayScore > bestBefore.score);
 
-  const tileCount = state.tiles.length;
-  const pairsLeft = Math.floor(tileCount / 2);
+  const recordedWin = useRef<string | null>(null);
+  useEffect(() => {
+    if (!state.hasWon || recordedWin.current === state.gameId) return;
+    recordedWin.current = state.gameId;
+    play('winCelebration');
+    trackGameWon('mahjong', state.moves, elapsedSeconds, state.score);
+    recordGameWon('mahjong', state.gameId, elapsedSeconds);
+    saveBestScore('mahjong', {
+      score: displayScore,
+      moves: state.moves,
+      elapsedSeconds,
+      date: Date.now(),
+    });
+  }, [state.hasWon, state.gameId, play, state.moves, elapsedSeconds, state.score, displayScore]);
+
+  const isStuck = state.hasLost && !state.hasWon;
+  useEffect(() => {
+    if (!isStuck) return;
+    trackGameLost('mahjong', state.moves);
+    recordGameLost('mahjong');
+    // Only the transition into a dead end is recorded
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStuck]);
+
+  const pairsLeft = Math.floor(state.tiles.length / 2);
 
   return (
     <div className="mahjong-game flex-1 flex flex-col w-full overflow-hidden">
@@ -119,53 +147,32 @@ export function Board({ onGoHome }: MahjongBoardProps) {
         score={displayScore}
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={false}
+        canUndo={state.history.length > 0 && !state.hasWon}
+        confirmNewGame={hasStarted && !isOver}
+        newGameWarning="Your current game will be abandoned and count as a loss."
         onNewGame={handleNewGame}
-        onUndo={() => { trackUndo('mahjong'); undo(); }}
+        onUndo={handleUndo}
         onAutoComplete={() => {}}
-        onOpenSettings={() => { trackOpenSettings('mahjong'); setSettingsOpen(true); }}
-        onOpenHelp={() => { trackOpenHelp('mahjong'); setHelpOpen(true); }}
-        onOpenStats={() => setStatsOpen(true)}
+        onHint={handleHint}
+        onOpenSettings={() => { trackOpenSettings('mahjong'); setOpenModal('settings'); }}
+        onOpenHelp={() => { trackOpenHelp('mahjong'); setOpenModal('help'); }}
+        onOpenStats={() => setOpenModal('stats')}
         onGoHome={onGoHome}
-        extraControls={
-          <div className="flex items-center gap-1.5">
-            <button
-              className="bg-white/12 text-white border border-white/18 rounded-lg cursor-pointer backdrop-blur-[4px] transition-[background,transform] hover:bg-white/22 active:scale-[0.96]"
-              style={{
-                padding: 'clamp(3px, 0.8vw, 6px) clamp(6px, 1.5vw, 10px)',
-                fontSize: 'clamp(10px, 2.2vw, 12px)',
-              }}
-              onClick={handleHint}
-            >
-              Hint
-            </button>
-            <button
-              className="bg-white/12 text-white border border-white/18 rounded-lg cursor-pointer backdrop-blur-[4px] transition-[background,transform] hover:bg-white/22 active:scale-[0.96]"
-              style={{
-                padding: 'clamp(3px, 0.8vw, 6px) clamp(6px, 1.5vw, 10px)',
-                fontSize: 'clamp(10px, 2.2vw, 12px)',
-              }}
-              onClick={handleShuffle}
-            >
-              Shuffle
-            </button>
-            <span
-              className="text-white/60 whitespace-nowrap"
-              style={{ fontSize: 'clamp(10px, 2.2vw, 12px)' }}
-            >
-              {pairsLeft} pairs
-            </span>
-          </div>
+        extraActions={
+          <TopBarButton onClick={handleShuffle} title="Shuffle the remaining tiles (-50 points)">
+            Shuffle
+          </TopBarButton>
         }
+        extraInfo={<TopBarStat label="Pairs" value={pairsLeft} />}
       />
 
       {/* Board area */}
       <div className="flex-1 flex items-center justify-center overflow-hidden" style={{ padding: 'clamp(4px, 1vw, 12px)' }}>
         <div
-          className="relative"
+          className="relative shrink-0"
           style={{
-            width: `calc(${boardDimensions.cols} * var(--mahjong-tile-width) / 2 + 10px)`,
-            height: `calc(${boardDimensions.rows} * var(--mahjong-tile-height) / 2 + 10px)`,
-            minWidth: `calc(${boardDimensions.cols} * var(--mahjong-tile-width) / 2 + 10px)`,
+            width: `calc(${boardSize.cols} * var(--mahjong-tile-width) / 2 + 6 * var(--mahjong-depth))`,
+            height: `calc(${boardSize.rows} * var(--mahjong-tile-height) / 2 + 6 * var(--mahjong-depth))`,
           }}
         >
           {state.tiles.map((placed) => (
@@ -175,18 +182,23 @@ export function Board({ onGoHome }: MahjongBoardProps) {
               isFree={freeTileIds.has(placed.tile.id)}
               isSelected={state.selectedTile?.tileId === placed.tile.id}
               isHinted={hintPair ? hintPair.includes(placed.tile.id) : false}
-              onClick={() => handleTileClick(placed.tile.id)}
+              onClick={handleTileClick}
             />
           ))}
         </div>
       </div>
 
       {/* No more moves overlay */}
-      {state.hasLost && !state.hasWon && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[20000] animate-[fadeIn_0.3s_ease] backdrop-blur-[4px]">
+      {isStuck && openModal === null && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="No more moves"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[20000] animate-[fadeIn_0.3s_ease] backdrop-blur-[4px]"
+        >
           <div
             className="win-card-bg rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-[scaleIn_0.3s_ease] text-center"
-            style={{ padding: 'clamp(24px, 5vw, 40px)', width: 'clamp(260px, 75vw, 340px)' }}
+            style={{ padding: 'clamp(24px, 5vw, 40px)', width: 'clamp(260px, 80vw, 360px)' }}
           >
             <h2
               className="font-bold text-[#c62828] m-0 mb-3"
@@ -198,52 +210,60 @@ export function Board({ onGoHome }: MahjongBoardProps) {
               className="text-[#666] m-0 mb-5"
               style={{ fontSize: 'clamp(12px, 3vw, 15px)' }}
             >
-              Try shuffling the remaining tiles or start a new game.
+              No free tiles match. Shuffle what's left (-50 points), take a move back, or start over.
             </p>
-            <div className="flex gap-3 justify-center">
+            <div className="flex flex-col gap-2.5">
               <button
-                className="bg-[#2e7d32] text-white font-semibold border-none rounded-full cursor-pointer transition-[background,transform] hover:bg-[#1b5e20] active:scale-[0.96]"
-                style={{
-                  padding: 'clamp(8px, 2vw, 12px) clamp(16px, 4vw, 24px)',
-                  fontSize: 'clamp(13px, 3vw, 16px)',
-                }}
+                className="bg-[#2e7d32] text-white font-semibold border-none rounded-xl py-3 cursor-pointer transition-[background,transform] hover:bg-[#388e3c] active:scale-[0.96]"
                 onClick={handleShuffle}
               >
-                Shuffle
+                Shuffle tiles
               </button>
-              <button
-                className="bg-[#e8e8e8] text-[#333] font-semibold border-none rounded-full cursor-pointer transition-[background,transform] hover:bg-[#ddd] active:scale-[0.96]"
-                style={{
-                  padding: 'clamp(8px, 2vw, 12px) clamp(16px, 4vw, 24px)',
-                  fontSize: 'clamp(13px, 3vw, 16px)',
-                }}
-                onClick={handleNewGame}
-              >
-                New Game
-              </button>
+              <div className="flex gap-2.5">
+                <button
+                  className="flex-1 bg-[#e8e8e8] text-[#333] font-semibold border-none rounded-xl py-3 cursor-pointer transition-[background,transform] hover:bg-[#ddd] active:scale-[0.96] disabled:opacity-40 disabled:cursor-default"
+                  onClick={handleUndo}
+                  disabled={state.history.length === 0}
+                >
+                  Undo
+                </button>
+                <button
+                  className="flex-1 bg-[#e8e8e8] text-[#333] font-semibold border-none rounded-xl py-3 cursor-pointer transition-[background,transform] hover:bg-[#ddd] active:scale-[0.96]"
+                  onClick={handleNewGame}
+                >
+                  New Game
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {state.hasWon && (
-        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={() => { setIsNewBest(false); handleNewGame(); }} onGoHome={onGoHome} />
+        <WinOverlay
+          moves={state.moves}
+          score={displayScore}
+          time={settings.timerEnabled ? formattedTime : undefined}
+          isNewBest={isNewBest}
+          onNewGame={handleNewGame}
+          onGoHome={onGoHome}
+        />
       )}
 
-      {settingsOpen && (
+      {openModal === 'settings' && (
         <SettingsModal
-          onClose={() => setSettingsOpen(false)}
-          onNewGame={() => { handleNewGame(); setSettingsOpen(false); }}
+          onClose={() => setOpenModal(null)}
+          onNewGame={() => { handleNewGame(); setOpenModal(null); }}
           gameType="mahjong"
         />
       )}
 
-      {helpOpen && (
-        <HowToPlayModal gameType="mahjong" onClose={() => setHelpOpen(false)} />
+      {openModal === 'help' && (
+        <HowToPlayModal gameType="mahjong" onClose={() => setOpenModal(null)} />
       )}
 
-      {statsOpen && (
-        <StatsModal gameType="mahjong" onClose={() => setStatsOpen(false)} />
+      {openModal === 'stats' && (
+        <StatsModal gameType="mahjong" onClose={() => setOpenModal(null)} />
       )}
     </div>
   );

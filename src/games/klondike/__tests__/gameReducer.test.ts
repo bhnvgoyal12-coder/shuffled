@@ -17,6 +17,7 @@ function makeCard(rank: Rank, suit: Suit, faceUp = true): Card {
 
 function emptyState(overrides: Partial<GameState> = {}): GameState {
   return {
+    gameId: 'test',
     stock: [],
     waste: [],
     foundations: [[], [], [], []],
@@ -290,5 +291,33 @@ describe('CLEAR_SELECTION', () => {
     });
     const next = gameReducer(state, { type: 'CLEAR_SELECTION' });
     expect(next.selectedCard).toBeNull();
+  });
+});
+
+// ── Deal identity / history ───────────────────────────────────
+
+describe('gameId and history', () => {
+  it('gives every new deal its own id', () => {
+    const first = gameReducer(emptyState(), { type: 'NEW_GAME' });
+    const second = gameReducer(first, { type: 'NEW_GAME' });
+    expect(first.gameId).toBeTruthy();
+    expect(second.gameId).not.toBe(first.gameId);
+  });
+
+  it('keeps the deal id through moves and undo', () => {
+    const state = emptyState({
+      gameId: 'deal-1',
+      stock: [makeCard('5', 'hearts', false)],
+    });
+    const drawn = gameReducer(state, { type: 'DRAW_STOCK' });
+    expect(drawn.gameId).toBe('deal-1');
+    expect(gameReducer(drawn, { type: 'UNDO' }).gameId).toBe('deal-1');
+  });
+
+  it('caps the undo history so saves stay small', () => {
+    // Turning a one-card stock over and over adds a history entry each time
+    let state = emptyState({ stock: [makeCard('5', 'hearts', false)] });
+    for (let i = 0; i < 500; i++) state = gameReducer(state, { type: 'DRAW_STOCK' });
+    expect(state.history.length).toBe(200);
   });
 });

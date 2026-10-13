@@ -1,6 +1,6 @@
 import React from 'react';
 import type { PlacedWord } from './types';
-import { getFoundColor } from './GridCell';
+import { getFoundColor } from './foundColors';
 
 interface WordListProps {
   words: PlacedWord[];

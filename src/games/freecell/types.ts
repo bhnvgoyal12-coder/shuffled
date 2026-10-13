@@ -13,6 +13,8 @@ export interface SelectedCard {
 }
 
 export interface FreeCellGameState {
+  /** Identifies this deal (ties the clock and stats to it) */
+  gameId: string;
   freeCells: (Card | null)[];
   foundations: Card[][];
   tableau: Card[][];

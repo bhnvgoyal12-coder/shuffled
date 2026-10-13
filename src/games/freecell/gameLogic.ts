@@ -1,5 +1,6 @@
 import type { Card, FreeCellGameState, FreeCellPileId } from './types';
 import { SUITS, RANKS, SUIT_COLORS, RANK_VALUES, FOUNDATION_SUITS } from '../../constants';
+import { newGameId } from '../../utils/gameId';
 
 function createDeck(): Card[] {
   const deck: Card[] = [];
@@ -37,6 +38,7 @@ export function dealFreeCellGame(): FreeCellGameState {
   }
 
   return {
+    gameId: newGameId(),
     freeCells: [null, null, null, null],
     foundations: [[], [], [], []],
     tableau,
@@ -69,11 +71,18 @@ export function getPileCards(state: FreeCellGameState, pileId: FreeCellPileId): 
   return [];
 }
 
-/**
- * Supermove: how many cards can be moved at once.
- * Formula: (emptyFreeCells + 1) × 2^(emptyTableauCols)
- * When moving to an empty tableau, that empty slot doesn't count.
- */
+/** True when the cards from `cardIndex` to the top of the pile form a run that may be picked up together. */
+export function isMovableRun(state: FreeCellGameState, pileId: FreeCellPileId, cardIndex: number): boolean {
+  const pile = getPileCards(state, pileId);
+  if (cardIndex < 0 || cardIndex >= pile.length) return false;
+  if (!pileId.startsWith('tableau-')) return cardIndex === pile.length - 1;
+  for (let i = cardIndex; i < pile.length - 1; i++) {
+    if (pile[i].color === pile[i + 1].color) return false;
+    if (getRankValue(pile[i].rank) !== getRankValue(pile[i + 1].rank) + 1) return false;
+  }
+  return true;
+}
+
 /**
  * Returns 'supermove' if the move would be valid except for the supermove limit,
  * null if the move is valid or invalid for other reasons.
@@ -121,6 +130,11 @@ export function getMoveRejectionReason(
   return null;
 }
 
+/**
+ * Supermove: how many cards can be moved at once.
+ * Formula: (emptyFreeCells + 1) × 2^(emptyTableauCols)
+ * When moving to an empty tableau, that empty slot doesn't count.
+ */
 export function getMaxMovableCards(state: FreeCellGameState, toEmpty = false): number {
   const emptyFreeCells = state.freeCells.filter(c => c === null).length;
   let emptyTableau = state.tableau.filter(t => t.length === 0).length;
@@ -324,11 +338,13 @@ export function findSafeFreeCellAutoMoves(
   return moves;
 }
 
+/**
+ * The game can finish itself once every column runs from high to low: the
+ * lowest card still in play is then always reachable (on top of its column or
+ * in a free cell), so cards can go up to the foundations one after another.
+ */
 export function canAutoComplete(state: FreeCellGameState): boolean {
-  // Can auto-complete when all tableau cards form valid descending sequences
-  // and all free cells are empty (or we can just check if all cards are face-up
-  // and in order). Simpler: just check all face up (always true in FreeCell)
-  // and no face-down cards. We check the same heuristic: all tableau sorted.
+  if (state.hasWon) return false;
   for (const pile of state.tableau) {
     for (let i = 0; i < pile.length - 1; i++) {
       if (getRankValue(pile[i].rank) <= getRankValue(pile[i + 1].rank)) {
@@ -336,8 +352,7 @@ export function canAutoComplete(state: FreeCellGameState): boolean {
       }
     }
   }
-  // Also require free cells empty
-  return state.freeCells.every(c => c === null);
+  return true;
 }
 
 export function getAutoCompleteMove(
@@ -374,4 +389,123 @@ export function getAutoCompleteMove(
   }
 
   return bestMove ? { from: bestMove.from, to: bestMove.to, cardIndex: bestMove.cardIndex } : null;
+}
+
+// ── Tap-to-move ───────────────────────────────────────────────
+
+const TABLEAU_IDS: FreeCellPileId[] = [
+  'tableau-0', 'tableau-1', 'tableau-2', 'tableau-3', 'tableau-4', 'tableau-5', 'tableau-6', 'tableau-7',
+];
+
+/**
+ * Where a tapped card should go: a foundation if it fits, otherwise onto
+ * another column, otherwise an empty column, otherwise a free cell.
+ */
+export function findBestMoveTarget(
+  state: FreeCellGameState,
+  from: FreeCellPileId,
+  cardIndex: number
+): FreeCellPileId | null {
+  if (from.startsWith('foundation-')) return null;
+  const targets = getValidFreeCellDropTargets(state, from, cardIndex);
+  if (targets.length === 0) return null;
+
+  const foundation = targets.find(t => t.startsWith('foundation-'));
+  if (foundation) return foundation;
+
+  const tableauTargets = targets.filter(t => t.startsWith('tableau-'));
+  const occupied = tableauTargets.find(t => getPileCards(state, t).length > 0);
+  if (occupied) return occupied;
+
+  // Moving a whole column into an empty column achieves nothing
+  const wholeColumn = from.startsWith('tableau-') && cardIndex === 0;
+  if (tableauTargets.length > 0 && !wholeColumn) return tableauTargets[0];
+
+  if (from.startsWith('freecell-')) return null;
+  return targets.find(t => t.startsWith('freecell-')) ?? null;
+}
+
+// ── Hints / dead ends ─────────────────────────────────────────
+
+export interface Hint {
+  from: FreeCellPileId;
+  to: FreeCellPileId;
+  cardIndex: number;
+}
+
+/** Index where the longest movable run at the top of a tableau pile begins. */
+function runStartIndex(pile: Card[]): number {
+  let start = pile.length - 1;
+  while (
+    start > 0 &&
+    pile[start - 1].color !== pile[start].color &&
+    getRankValue(pile[start - 1].rank) === getRankValue(pile[start].rank) + 1
+  ) {
+    start--;
+  }
+  return start;
+}
+
+/** Suggest a move that makes progress, or null when nothing obviously helps. */
+export function getHint(state: FreeCellGameState): Hint | null {
+  if (state.hasWon) return null;
+
+  // 1. Anything that can go up to a foundation
+  const toFoundation = getAutoCompleteMove(state);
+  if (toFoundation) return toFoundation;
+
+  // 2. Join a complete run onto another column (never splits a run, so it can't loop)
+  for (const from of TABLEAU_IDS) {
+    const pile = getPileCards(state, from);
+    if (pile.length === 0) continue;
+    const cardIndex = runStartIndex(pile);
+    for (const to of TABLEAU_IDS) {
+      if (getPileCards(state, to).length === 0) continue;
+      if (isValidFreeCellMove(state, from, to, cardIndex)) return { from, to, cardIndex };
+    }
+  }
+
+  // 3. Bring a card back from a free cell onto a column
+  for (let i = 0; i < 4; i++) {
+    if (!state.freeCells[i]) continue;
+    const from: FreeCellPileId = `freecell-${i as 0 | 1 | 2 | 3}`;
+    for (const to of TABLEAU_IDS) {
+      if (getPileCards(state, to).length === 0) continue;
+      if (isValidFreeCellMove(state, from, to, 0)) return { from, to, cardIndex: 0 };
+    }
+  }
+
+  // 4. Park a card in a free cell (or empty column) when that uncovers one a foundation is waiting for
+  const freeCell = state.freeCells.findIndex(c => c === null);
+  const emptyColumn = state.tableau.findIndex(t => t.length === 0);
+  if (freeCell !== -1 || emptyColumn !== -1) {
+    const to: FreeCellPileId = freeCell !== -1
+      ? `freecell-${freeCell as 0 | 1 | 2 | 3}`
+      : `tableau-${emptyColumn as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7}`;
+    for (const from of TABLEAU_IDS) {
+      const pile = getPileCards(state, from);
+      if (pile.length < 2) continue;
+      const uncovered = pile[pile.length - 2];
+      const foundation = state.foundations[FOUNDATION_SUITS.indexOf(uncovered.suit)];
+      if (foundation.length === getRankValue(uncovered.rank) - 1) {
+        return { from, to, cardIndex: pile.length - 1 };
+      }
+    }
+  }
+
+  return null;
+}
+
+/** False when the player is completely stuck: no card can legally move anywhere. */
+export function hasAnyMove(state: FreeCellGameState): boolean {
+  if (state.freeCells.some(c => c === null)) return true;
+  if (state.tableau.some(t => t.length === 0)) return true;
+  for (let i = 0; i < 4; i++) {
+    if (getValidFreeCellDropTargets(state, `freecell-${i as 0 | 1 | 2 | 3}`, 0).length > 0) return true;
+  }
+  for (const from of TABLEAU_IDS) {
+    const pile = getPileCards(state, from);
+    if (pile.length > 0 && getValidFreeCellDropTargets(state, from, pile.length - 1).length > 0) return true;
+  }
+  return false;
 }

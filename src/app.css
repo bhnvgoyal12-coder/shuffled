@@ -6,15 +6,14 @@
 
 /* --- CSS Custom Properties (read by JS at runtime via getCssVarPx()) --- */
 :root {
-  --card-width: clamp(48px, 12.5vw, 80px);
-  --card-height: calc(var(--card-width) * 1.4);
-  --card-radius: calc(var(--card-width) * 0.1);
-  --card-gap: clamp(3px, 1vw, 14px);
-  --tableau-offset: clamp(19px, 4vw, 28px);
-  --tableau-offset-down: clamp(5px, 1.1vw, 8px);
-  --card-font-size: clamp(14px, 3.5vw, 20px);
-  --card-center-font-size: clamp(26px, 7vw, 40px);
-  --card-pip-size: clamp(10px, 2.8vw, 16px);
+  /* Width the page can actually use (inside the notch / rounded corners) */
+  --avail-width: calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  /* Seven columns always fit the screen width; on wide screens the height is
+     the limit instead, so the board also fits landscape phones and desktops. */
+  --card-width: clamp(34px, min(calc((var(--avail-width) - 2 * var(--board-padding) - 6 * var(--card-gap)) / 7), 12.5dvh), 100px);
+  --card-gap: clamp(3px, 1vw, 16px);
+  /* Height of the top bar: buttons over a status row on phones, a single row from 768px up */
+  --topbar-height: 92px;
   --board-padding: clamp(4px, 1.5vw, 16px);
   --ws-cell-size: clamp(30px, 8vw, 44px);
 
@@ -24,20 +23,28 @@
   --card-back-border: #1565C0;
 }
 
-/* Small mobile screens — compress tableau to reduce scrolling */
-@media (max-height: 700px) and (max-width: 500px) {
+@media (min-width: 768px) {
   :root {
-    --tableau-offset: clamp(18px, 3.5vw, 28px);
-    --tableau-offset-down: clamp(3px, 0.8vw, 6px);
+    --topbar-height: 68px;
   }
 }
 
-/* Landscape on small devices */
-@media (orientation: landscape) and (max-height: 500px) {
-  :root {
-    --tableau-offset: clamp(16px, 2.5vw, 22px);
-    --tableau-offset-down: 4px;
-  }
+/* Everything derived from --card-width. Custom properties resolve where they
+   are declared, so game scopes that override --card-width must redeclare these
+   too — otherwise they inherit values computed from the root card width. */
+:root, .freecell-game, .spider-game {
+  --card-height: calc(var(--card-width) * 1.4);
+  --card-radius: calc(var(--card-width) * 0.1);
+  /* Slightly larger in proportion on small cards, but never so large that "10" and its suit collide */
+  --card-font-size: clamp(12px, calc(var(--card-width) * 0.29), max(14px, calc(var(--card-width) * 0.25)));
+  --card-center-font-size: clamp(20px, calc(var(--card-width) * 0.54), max(26px, calc(var(--card-width) * 0.5)));
+  --card-pip-size: max(10px, calc(var(--card-width) * 0.2));
+  --tableau-offset: max(22px, calc(var(--card-width) * 0.36));
+  --tableau-offset-down: max(5px, calc(var(--card-width) * 0.1));
+  /* Tightest a fanned pile may be squeezed before the board scrolls instead */
+  --tableau-offset-min: calc(var(--card-font-size) * 0.95);
+  /* Height left for the tableau below the top bar and the top row of piles */
+  --tableau-avail: calc(100dvh - var(--topbar-height) - var(--card-height) - 60px);
 }
 
 /* --- Base element styles --- */
@@ -120,6 +127,11 @@ body::before {
   background: linear-gradient(145deg, #ffffff 0%, #f8f8f8 100%);
 }
 
+/* White rim of a card back — thin enough that a face-down card's sliver in a pile still shows its colour */
+.card-back-rim {
+  border: max(1.5px, calc(var(--card-width) * 0.04)) solid #fff;
+}
+
 .card-back-pattern {
   background: linear-gradient(135deg, var(--card-back-color1) 25%, var(--card-back-color2) 25%, var(--card-back-color2) 50%, var(--card-back-color1) 50%, var(--card-back-color1) 75%, var(--card-back-color2) 75%);
   background-size: 10px 10px;
@@ -157,43 +169,113 @@ body::before {
 
 /* --- Game-scoped card sizing overrides --- */
 .spider-game {
-  --card-width: clamp(32px, 9vw, 70px);
-  --card-font-size: clamp(11px, 2.8vw, 17px);
-  --card-center-font-size: clamp(20px, 5.5vw, 34px);
-  --card-pip-size: clamp(8px, 2.2vw, 13px);
-  --tableau-offset: clamp(18px, 3.5vw, 30px);
-  --tableau-offset-down: clamp(4px, 1vw, 8px);
+  --card-width: clamp(26px, min(calc((var(--avail-width) - 2 * var(--board-padding) - 9 * var(--card-gap)) / 10), 11dvh), 80px);
+  --card-font-size: max(10px, calc(var(--card-width) * 0.27));
+  --card-center-font-size: max(16px, calc(var(--card-width) * 0.5));
 }
 
 .freecell-game {
-  --card-width: clamp(40px, 11vw, 75px);
-  --tableau-offset: clamp(22px, 4vw, 30px);
+  --card-width: clamp(30px, min(calc((var(--avail-width) - 2 * var(--board-padding) - 7 * var(--card-gap)) / 8), 12dvh), 96px);
+  --tableau-offset: max(22px, calc(var(--card-width) * 0.38));
 }
 
 .mahjong-game {
-  --mahjong-tile-width: clamp(30px, 6.5vw, 48px);
+  /* The turtle is 15 tiles wide and 8 tall — fit whichever dimension is tighter */
+  --mahjong-tile-width: clamp(18px, min(calc((var(--avail-width) - 16px) / 15.6), calc((100dvh - var(--topbar-height) - 24px) / 11.4)), 64px);
   --mahjong-tile-height: calc(var(--mahjong-tile-width) * 1.35);
-  --mahjong-tile-font-size: clamp(14px, 3.5vw, 22px);
+  --mahjong-tile-font-size: calc(var(--mahjong-tile-width) * 0.62);
+  /* Visible thickness of a tile, and how far each layer is shifted */
+  --mahjong-depth: calc(var(--mahjong-tile-width) * 0.1);
 }
 
-@media (max-width: 420px) {
-  .mahjong-game {
-    --mahjong-tile-width: clamp(22px, 5.8vw, 36px);
-    --mahjong-tile-font-size: clamp(11px, 3vw, 18px);
+.mahjong-tile {
+  position: absolute;
+  width: var(--mahjong-tile-width);
+  height: var(--mahjong-tile-height);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #a8966a;
+  border-radius: calc(var(--mahjong-tile-width) * 0.14);
+  background: linear-gradient(145deg, #fffdf2 0%, #f1e8cf 100%);
+  /* Two hard steps for the side of the tile, then a soft drop shadow */
+  box-shadow:
+    calc(var(--mahjong-depth) * 0.5) calc(var(--mahjong-depth) * 0.5) 0 #cdbb8c,
+    var(--mahjong-depth) var(--mahjong-depth) 0 #8d7b4e,
+    calc(var(--mahjong-depth) * 1.6) calc(var(--mahjong-depth) * 1.8) calc(var(--mahjong-depth) * 1.5) rgba(0, 0, 0, 0.45);
+  font-family: inherit;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: translate 0.12s ease, filter 0.15s ease;
+}
+
+/* Tiles that can't be taken yet recede: darker, never see-through */
+.mahjong-tile--blocked {
+  cursor: default;
+  filter: brightness(0.66) saturate(0.75);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mahjong-tile--free:hover {
+    filter: brightness(1.06);
+    translate: 0 -1px;
   }
 }
 
+.mahjong-tile--selected {
+  translate: 0 calc(var(--mahjong-depth) * -0.8);
+  background: linear-gradient(145deg, #fff8d6 0%, #ffe082 100%);
+  border-color: #ff8f00;
+  box-shadow:
+    0 0 0 2px #ffc107,
+    var(--mahjong-depth) var(--mahjong-depth) 0 #8d7b4e,
+    0 0 14px rgba(255, 193, 7, 0.75);
+}
+
+.mahjong-tile--hinted {
+  border-color: #0288d1;
+  animation: hintPulse 0.9s ease-in-out infinite;
+}
+
+.mahjong-tile:focus-visible {
+  outline: 2px solid #4fc3f7;
+  outline-offset: 1px;
+}
+
+.mahjong-tile__symbol {
+  font-size: var(--mahjong-tile-font-size);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mahjong-tile__suit {
+  position: absolute;
+  top: 6%;
+  left: 9%;
+  font-size: calc(var(--mahjong-tile-font-size) * 0.4);
+  line-height: 1;
+  opacity: 0.75;
+}
+
 /* --- TopBar layout (uses CSS custom properties) --- */
+/* As wide as the board below it — but never narrower than the bar needs to stay
+   on one row when the board is small (landscape phones). */
+.topbar-layout, .topbar-layout-7, .topbar-layout-8, .topbar-layout-10 {
+  --topbar-min: min(100%, 860px);
+}
+
 .topbar-layout, .topbar-layout-7 {
-  max-width: calc(7 * var(--card-width) + 6 * var(--card-gap) + 2 * var(--board-padding));
+  max-width: max(var(--topbar-min), calc(7 * var(--card-width) + 6 * var(--card-gap) + 2 * var(--board-padding)));
 }
 
 .topbar-layout-8 {
-  max-width: calc(8 * var(--card-width) + 7 * var(--card-gap) + 2 * var(--board-padding));
+  max-width: max(var(--topbar-min), calc(8 * var(--card-width) + 7 * var(--card-gap) + 2 * var(--board-padding)));
 }
 
 .topbar-layout-10 {
-  max-width: calc(10 * var(--card-width) + 9 * var(--card-gap) + 2 * var(--board-padding));
+  max-width: max(var(--topbar-min), calc(10 * var(--card-width) + 9 * var(--card-gap) + 2 * var(--board-padding)));
 }
 
 /* --- Desktop-only card hover --- */
@@ -201,6 +283,53 @@ body::before {
   .card-hover:hover {
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.12);
   }
+}
+
+/* --- Card highlights --- */
+/* A pile this card (or the carried stack) can legally be placed on */
+.card-target {
+  box-shadow: 0 0 0 2px #FFC107, 0 0 12px rgba(255, 193, 7, 0.4);
+}
+
+/* Hint: the card to move */
+.card-hint {
+  animation: hintPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes hintPulse {
+  0%, 100% { box-shadow: 0 0 0 2px #4FC3F7, 0 0 6px rgba(79, 195, 247, 0.5); }
+  50% { box-shadow: 0 0 0 3px #4FC3F7, 0 0 18px rgba(79, 195, 247, 0.95); }
+}
+
+.pile-hint {
+  border-radius: var(--card-radius);
+  animation: hintPulse 0.9s ease-in-out infinite;
+}
+
+/* --- Auto-finish button --- */
+.auto-finish-btn {
+  translate: -50% 0;
+  background: linear-gradient(180deg, #ffd54f 0%, #ffb300 100%);
+  animation: autoFinishIn 0.3s ease, autoFinishGlow 1.6s ease-in-out 0.3s infinite;
+}
+
+@keyframes autoFinishIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes autoFinishGlow {
+  0%, 100% { box-shadow: 0 6px 24px rgba(255, 193, 7, 0.45); }
+  50% { box-shadow: 0 6px 32px rgba(255, 193, 7, 0.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-hint, .pile-hint, .mahjong-tile--hinted {
+    animation: none;
+    box-shadow: 0 0 0 3px #4FC3F7;
+  }
+  .auto-finish-btn { animation: none; }
+  .card-3d { transition: none; }
 }
 
 /* --- Stock pile depth nth-child positioning --- */

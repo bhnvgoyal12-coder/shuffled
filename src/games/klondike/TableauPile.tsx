@@ -8,6 +8,8 @@ interface TableauPileProps {
   cards: Card[];
   selectedCard: SelectedCard | null;
   isValidTarget: boolean;
+  /** Index of the first card of a hinted run in this pile, if any */
+  hintFromIndex?: number | null;
   draggingCards: Set<string>;
   onPointerDown: (e: React.PointerEvent, pileId: string, cardIndex: number) => void;
   onCardClick: (pileId: string, cardIndex: number) => void;
@@ -19,6 +21,7 @@ export const TableauPile = React.memo(function TableauPile({
   cards,
   selectedCard,
   isValidTarget,
+  hintFromIndex = null,
   draggingCards,
   onPointerDown,
   onCardClick,
@@ -38,24 +41,25 @@ export const TableauPile = React.memo(function TableauPile({
     );
   }
 
-  // Build CSS calc() offsets so clamp() values resolve correctly
-  let faceUpCount = 0;
-  let faceDownCount = 0;
+  // Each card sits below the ones before it: face-up cards by --pile-offset,
+  // face-down cards by the smaller --tableau-offset-down.
+  let faceUpBefore = 0;
+  let faceDownBefore = 0;
   const cssOffsets: string[] = [];
   for (let i = 0; i < cards.length; i++) {
-    if (i === 0) {
-      cssOffsets.push('0px');
-    } else {
-      cssOffsets.push(
-        `calc(${faceUpCount} * var(--tableau-offset) + ${faceDownCount} * var(--tableau-offset-down))`
-      );
-    }
-    if (i < cards.length - 1) {
-      if (cards[i].faceUp) faceUpCount++;
-      else faceDownCount++;
-    }
+    cssOffsets.push(
+      `calc(${faceUpBefore} * var(--pile-offset) + ${faceDownBefore} * var(--tableau-offset-down))`
+    );
+    if (cards[i].faceUp) faceUpBefore++;
+    else faceDownBefore++;
   }
-  const totalHeightCss = `calc(${faceUpCount} * var(--tableau-offset) + ${faceDownCount} * var(--tableau-offset-down) + var(--card-height))`;
+  const lastCard = cards[cards.length - 1];
+  const faceUpGaps = faceUpBefore - (lastCard.faceUp ? 1 : 0);
+  const faceDownGaps = faceDownBefore - (lastCard.faceUp ? 0 : 1);
+
+  // A long run is fanned more tightly so the pile still fits on screen
+  const pileOffset = `max(var(--tableau-offset-min), min(var(--tableau-offset), calc((var(--tableau-avail) - var(--card-height) - ${faceDownGaps} * var(--tableau-offset-down)) / ${Math.max(1, faceUpGaps)})))`;
+  const totalHeightCss = `calc(${faceUpGaps} * var(--pile-offset) + ${faceDownGaps} * var(--tableau-offset-down) + var(--card-height))`;
 
   // Check if any card at or above index is selected
   const isInSelectedStack = (i: number) =>
@@ -65,7 +69,7 @@ export const TableauPile = React.memo(function TableauPile({
     <div
       className="relative w-[var(--card-width)]"
       data-pile-id={pileId}
-      style={{ height: totalHeightCss }}
+      style={{ '--pile-offset': pileOffset, height: totalHeightCss } as React.CSSProperties}
     >
       {cards.map((card, i) => (
         <CardComponent
@@ -79,6 +83,7 @@ export const TableauPile = React.memo(function TableauPile({
           isSelected={isInSelectedStack(i)}
           isDragging={draggingCards.has(card.id)}
           isValidTarget={i === cards.length - 1 && isValidTarget}
+          isHinted={hintFromIndex !== null && i >= hintFromIndex}
           onPointerDown={(e) => onPointerDown(e, pileId, i)}
           onClick={() => onCardClick(pileId, i)}
         />

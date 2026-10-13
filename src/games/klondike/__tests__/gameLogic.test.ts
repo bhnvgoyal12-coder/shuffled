@@ -6,6 +6,9 @@ import {
   checkWin,
   canAutoComplete,
   getAutoCompleteMove,
+  getAutoCompleteStep,
+  findBestMoveTarget,
+  getHint,
   getValidDropTargets,
   calculateScore,
   findAutoMoveToFoundation,
@@ -27,6 +30,7 @@ function makeCard(rank: Rank, suit: Suit, faceUp = true): Card {
 
 function emptyState(overrides: Partial<GameState> = {}): GameState {
   return {
+    gameId: 'test',
     stock: [],
     waste: [],
     foundations: [[], [], [], []],
@@ -246,12 +250,12 @@ describe('checkWin', () => {
 // ── canAutoComplete() ─────────────────────────────────────────
 
 describe('canAutoComplete', () => {
-  it('returns false when stock is not empty', () => {
-    const state = emptyState({
-      stock: [makeCard('A', 'hearts', false)],
-    });
-    expect(canAutoComplete(state)).toBe(false);
-  });
+  /** Foundations built up to `topRank` in every suit. */
+  function foundationsUpTo(topRank: Rank): Card[][] {
+    const ranks: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    const suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
+    return suits.map(suit => ranks.slice(0, ranks.indexOf(topRank) + 1).map(rank => makeCard(rank, suit)));
+  }
 
   it('returns false when any tableau card is face down', () => {
     const state = emptyState({
@@ -260,12 +264,165 @@ describe('canAutoComplete', () => {
     expect(canAutoComplete(state)).toBe(false);
   });
 
-  it('returns true when stock empty and all tableau cards face up', () => {
+  it('returns false for a game that is already won', () => {
+    const state = emptyState({ foundations: foundationsUpTo('K'), hasWon: true });
+    expect(canAutoComplete(state)).toBe(false);
+  });
+
+  it('returns true when the remaining tableau cards can simply be played up', () => {
     const state = emptyState({
-      waste: [makeCard('A', 'hearts')],
-      tableau: [[makeCard('K', 'spades')], [], [], [], [], [], []],
+      foundations: foundationsUpTo('Q'),
+      tableau: [
+        [makeCard('K', 'hearts')], [makeCard('K', 'diamonds')],
+        [makeCard('K', 'clubs')], [makeCard('K', 'spades')], [], [], [],
+      ],
     });
     expect(canAutoComplete(state)).toBe(true);
+  });
+
+  it('returns true when the needed cards are still in the stock and waste', () => {
+    const state = emptyState({
+      foundations: foundationsUpTo('J'),
+      stock: [makeCard('Q', 'hearts', false), makeCard('Q', 'diamonds', false)],
+      waste: [makeCard('Q', 'clubs'), makeCard('Q', 'spades')],
+      tableau: [
+        [makeCard('K', 'hearts')], [makeCard('K', 'diamonds')],
+        [makeCard('K', 'clubs')], [makeCard('K', 'spades')], [], [], [],
+      ],
+    });
+    expect(canAutoComplete(state, 1)).toBe(true);
+    expect(canAutoComplete(state, 3)).toBe(true);
+  });
+
+  it('returns false when a tableau card blocks the one beneath it', () => {
+    // The Queen of hearts is under the King of hearts, which needs that Queen first
+    const foundations = foundationsUpTo('Q');
+    foundations[0] = foundations[0].slice(0, 11); // hearts only up to the Jack
+    const state = emptyState({
+      foundations,
+      tableau: [
+        [makeCard('Q', 'hearts'), makeCard('K', 'hearts')],
+        [makeCard('K', 'diamonds')], [makeCard('K', 'clubs')], [makeCard('K', 'spades')], [], [], [],
+      ],
+    });
+    expect(canAutoComplete(state)).toBe(false);
+  });
+
+  it('returns false when Draw 3 can never reach the card that is needed', () => {
+    // Drawing three at a time only ever exposes the 3rd card of the stock: the King.
+    const foundations = foundationsUpTo('K');
+    foundations[0] = foundations[0].slice(0, 10); // hearts up to the 10
+    const state = emptyState({
+      foundations,
+      stock: [makeCard('K', 'hearts', false), makeCard('Q', 'hearts', false), makeCard('J', 'hearts', false)],
+    });
+    expect(canAutoComplete(state, 3)).toBe(false);
+    expect(canAutoComplete(state, 1)).toBe(true);
+  });
+});
+
+// ── getAutoCompleteStep() ─────────────────────────────────────
+
+describe('getAutoCompleteStep', () => {
+  it('plays a card to a foundation when one fits', () => {
+    const state = emptyState({ waste: [makeCard('A', 'hearts')] });
+    expect(getAutoCompleteStep(state)).toEqual({
+      type: 'move', from: 'waste', to: 'foundation-0', cardIndex: 0,
+    });
+  });
+
+  it('turns the stock when nothing on the board fits', () => {
+    const state = emptyState({
+      stock: [makeCard('A', 'hearts', false)],
+      tableau: [[makeCard('K', 'spades')], [], [], [], [], [], []],
+    });
+    expect(getAutoCompleteStep(state)).toEqual({ type: 'draw' });
+  });
+
+  it('returns null while a tableau card is still face down', () => {
+    const state = emptyState({
+      waste: [makeCard('A', 'hearts')],
+      tableau: [[makeCard('K', 'spades', false)], [], [], [], [], [], []],
+    });
+    expect(getAutoCompleteStep(state)).toBeNull();
+  });
+});
+
+// ── findBestMoveTarget() ──────────────────────────────────────
+
+describe('findBestMoveTarget', () => {
+  it('prefers a foundation over the tableau', () => {
+    const state = emptyState({
+      waste: [makeCard('A', 'hearts')],
+      tableau: [[makeCard('2', 'spades')], [], [], [], [], [], []],
+    });
+    expect(findBestMoveTarget(state, 'waste', 0)).toBe('foundation-0');
+  });
+
+  it('moves onto another tableau pile when no foundation fits', () => {
+    const state = emptyState({
+      tableau: [[makeCard('6', 'spades')], [makeCard('7', 'hearts')], [], [], [], [], []],
+    });
+    expect(findBestMoveTarget(state, 'tableau-0', 0)).toBe('tableau-1');
+  });
+
+  it('leaves a King alone when it is already at the bottom of its column', () => {
+    const state = emptyState({
+      tableau: [[makeCard('K', 'spades')], [], [], [], [], [], []],
+    });
+    expect(findBestMoveTarget(state, 'tableau-0', 0)).toBeNull();
+  });
+
+  it('sends a King that covers other cards to an empty column', () => {
+    const state = emptyState({
+      tableau: [[makeCard('5', 'hearts', false), makeCard('K', 'spades')], [], [], [], [], [], []],
+    });
+    expect(findBestMoveTarget(state, 'tableau-0', 1)).toBe('tableau-1');
+  });
+
+  it('returns null when the card has nowhere to go', () => {
+    const state = emptyState({
+      tableau: [[makeCard('6', 'spades')], [makeCard('9', 'hearts')], [], [], [], [], []],
+    });
+    expect(findBestMoveTarget(state, 'tableau-0', 0)).toBeNull();
+  });
+});
+
+// ── getHint() ─────────────────────────────────────────────────
+
+describe('getHint', () => {
+  it('suggests a foundation move first', () => {
+    const state = emptyState({
+      waste: [makeCard('A', 'hearts')],
+      tableau: [[makeCard('2', 'spades')], [], [], [], [], [], []],
+    });
+    expect(getHint(state)).toEqual({ type: 'move', from: 'waste', to: 'foundation-0', cardIndex: 0 });
+  });
+
+  it('suggests moving a run that uncovers a face-down card', () => {
+    const state = emptyState({
+      tableau: [
+        [makeCard('2', 'clubs', false), makeCard('6', 'spades'), makeCard('5', 'hearts')],
+        [makeCard('7', 'diamonds')],
+        [], [], [], [], [],
+      ],
+    });
+    expect(getHint(state)).toEqual({ type: 'move', from: 'tableau-0', to: 'tableau-1', cardIndex: 1 });
+  });
+
+  it('suggests drawing when nothing on the board helps', () => {
+    const state = emptyState({
+      stock: [makeCard('3', 'clubs', false)],
+      tableau: [[makeCard('6', 'spades')], [makeCard('9', 'hearts')], [], [], [], [], []],
+    });
+    expect(getHint(state)).toEqual({ type: 'draw' });
+  });
+
+  it('returns null when there is nothing left to try', () => {
+    const state = emptyState({
+      tableau: [[makeCard('6', 'spades')], [makeCard('9', 'hearts')], [], [], [], [], []],
+    });
+    expect(getHint(state)).toBeNull();
   });
 });
 

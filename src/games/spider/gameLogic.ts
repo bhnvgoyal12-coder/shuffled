@@ -1,5 +1,6 @@
 import type { Card, Suit, SpiderSuitCount, SpiderGameState, SpiderPileId } from './types';
 import { RANKS, SUIT_COLORS, RANK_VALUES } from '../../constants';
+import { newGameId } from '../../utils/gameId';
 
 const SPIDER_SUITS: Record<SpiderSuitCount, Suit[]> = {
   1: ['spades'],
@@ -68,6 +69,7 @@ export function dealSpiderGame(suitCount: SpiderSuitCount): SpiderGameState {
   const stock = deck.slice(cardIdx).map(c => ({ ...c, faceUp: false }));
 
   return {
+    gameId: newGameId(),
     stock,
     tableau,
     completedSuits: 0,

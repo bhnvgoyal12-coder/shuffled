@@ -12,6 +12,8 @@ export interface SelectedCard {
 }
 
 export interface SpiderGameState {
+  /** Identifies this deal (ties the clock to it) */
+  gameId: string;
   stock: Card[];
   tableau: Card[][];
   completedSuits: number;

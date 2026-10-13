@@ -43,7 +43,12 @@ export function WinOverlay({ moves, score, time, isNewBest, onNewGame, onGoHome 
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex flex-col items-center justify-center z-[20000] animate-[fadeIn_0.5s_ease] backdrop-blur-[4px]">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="You win"
+      className="fixed inset-0 bg-black/60 flex flex-col items-center justify-center z-[20000] animate-[fadeIn_0.5s_ease] backdrop-blur-[4px]"
+    >
       <div
         className="win-card-bg rounded-[20px] text-center shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-[scaleIn_0.4s_ease]"
         style={{ padding: 'clamp(24px, 5vw, 40px) clamp(32px, 7vw, 56px)' }}

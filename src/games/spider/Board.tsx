@@ -4,11 +4,11 @@ import { useSpiderGameState } from './useGameState';
 import { useDragAndDrop } from '../../hooks/useDragAndDrop';
 import { useSound } from '../../hooks/useSound';
 import { getValidSpiderDropTargets, getPileCards, canDealStock } from './gameLogic';
-import { SUIT_SYMBOLS } from '../../constants';
 import { TopBar } from '../../components/TopBar';
 import { SpiderStockPile } from './SpiderStockPile';
 import { SpiderTableauPile } from './SpiderTableauPile';
 import { CompletedSuitsDisplay } from './CompletedSuitsDisplay';
+import { DragOverlay } from '../../components/DragOverlay';
 import { WinOverlay } from '../../components/WinOverlay';
 import { SettingsModal } from '../../components/SettingsModal';
 import { HowToPlayModal } from '../../components/HowToPlayModal';
@@ -18,7 +18,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
 import { trackNewGame, trackGameWon, trackUndo, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
-import { saveBestScore } from '../../utils/highScores';
+import { getBestScore, saveBestScore } from '../../utils/highScores';
 
 interface SpiderBoardProps {
   onGoHome?: () => void;
@@ -29,26 +29,21 @@ export function Board({ onGoHome }: SpiderBoardProps) {
   const { settings } = useSettings();
   const { play } = useSound();
 
-  const { elapsedSeconds, resetTimer, formattedTime } = useGameTimer({
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const hasStarted = state.moves > 0 || state.history.length > 0;
+  const { elapsedSeconds, formattedTime } = useGameTimer({
     gameType: 'spider',
-    isGameOver: state.hasWon,
-    timerEnabled: settings.timerEnabled,
+    gameId: state.gameId,
+    isRunning: hasStarted && !state.hasWon && !settingsOpen && !helpOpen,
   });
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
   const handleNewGame = useCallback(() => {
     trackNewGame('spider');
     newGame();
-    resetTimer();
-  }, [newGame, resetTimer]);
-
-  const moveCardsWithSound = useCallback(
-    (from: string, to: string, cardIndex: number) => {
-      moveCards(from as SpiderPileId, to as SpiderPileId, cardIndex);
-      play('cardPlace');
-    },
-    [moveCards, play]
-  );
+  }, [newGame]);
 
   const {
     isDragging,
@@ -58,15 +53,16 @@ export function Board({ onGoHome }: SpiderBoardProps) {
     overlayRef,
     initialPos,
     handlePointerDown,
-  } = useDragAndDrop(
+  } = useDragAndDrop({
     state,
-    moveCardsWithSound,
-    (s, from, idx) => getValidSpiderDropTargets(s, from as SpiderPileId, idx),
-    (s, id) => getPileCards(s, id as SpiderPileId),
-  );
+    moveCards: (from, to, cardIndex) => {
+      moveCards(from as SpiderPileId, to as SpiderPileId, cardIndex);
+      play('cardPlace');
+    },
+    getValidDropTargets: (s, from, idx) => getValidSpiderDropTargets(s, from as SpiderPileId, idx),
+    getPile: (s, id) => getPileCards(s, id as SpiderPileId),
+  });
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   const canDeal = canDealStock(state);
 
   const handleDealStock = useCallback(() => {
@@ -93,22 +89,28 @@ export function Board({ onGoHome }: SpiderBoardProps) {
   );
 
   // Win sound + analytics + high score
-  const prevWon = useRef(false);
-  const [isNewBest, setIsNewBest] = useState(false);
+  const [bestBefore, setBestBefore] = useState(() => ({
+    gameId: state.gameId,
+    score: getBestScore('spider')?.score ?? null,
+  }));
+  if (bestBefore.gameId !== state.gameId) {
+    setBestBefore({ gameId: state.gameId, score: getBestScore('spider')?.score ?? null });
+  }
+  const isNewBest = state.hasWon && (bestBefore.score === null || displayScore > bestBefore.score);
+
+  const recordedWin = useRef<string | null>(null);
   useEffect(() => {
-    if (state.hasWon && !prevWon.current) {
-      play('winCelebration');
-      trackGameWon('spider', state.moves, elapsedSeconds, state.score);
-      const newBest = saveBestScore('spider', {
-        score: displayScore,
-        moves: state.moves,
-        elapsedSeconds,
-        date: Date.now(),
-      });
-      setIsNewBest(newBest);
-    }
-    prevWon.current = state.hasWon;
-  }, [state.hasWon, play, state.moves, elapsedSeconds, state.score, displayScore]);
+    if (!state.hasWon || recordedWin.current === state.gameId) return;
+    recordedWin.current = state.gameId;
+    play('winCelebration');
+    trackGameWon('spider', state.moves, elapsedSeconds, state.score);
+    saveBestScore('spider', {
+      score: displayScore,
+      moves: state.moves,
+      elapsedSeconds,
+      date: Date.now(),
+    });
+  }, [state.hasWon, state.gameId, play, state.moves, elapsedSeconds, state.score, displayScore]);
 
   const validTargetSet = new Set(validTargets);
 
@@ -120,13 +122,15 @@ export function Board({ onGoHome }: SpiderBoardProps) {
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={false}
         onNewGame={handleNewGame}
+        canUndo={state.history.length > 0 && !state.hasWon}
+        confirmNewGame={hasStarted && !state.hasWon}
         onUndo={() => { trackUndo('spider'); undo(); }}
         onAutoComplete={() => {}}
         onOpenSettings={() => { trackOpenSettings('spider'); setSettingsOpen(true); }}
         onOpenHelp={() => { trackOpenHelp('spider'); setHelpOpen(true); }}
         onGoHome={onGoHome}
         layoutClass="topbar-layout-10"
-        extraControls={<CompletedSuitsDisplay completedSuits={state.completedSuits} />}
+        extraInfo={<CompletedSuitsDisplay completedSuits={state.completedSuits} />}
       />
 
       <div className="board-grid-10 mx-auto w-full justify-center">
@@ -158,47 +162,10 @@ export function Board({ onGoHome }: SpiderBoardProps) {
         />
       </div>
 
-      {/* Drag overlay */}
-      {isDragging && (
-        <div
-          className="fixed top-0 left-0 pointer-events-none z-[10000]"
-          ref={overlayRef}
-          style={initialPos ? { transform: `translate(${initialPos.x}px, ${initialPos.y}px)` } : undefined}
-        >
-          {dragCards.map((card, i) => {
-            const textColor = card.color === 'red' ? 'text-[#d32f2f]' : 'text-[#212121]';
-            return (
-              <div
-                key={card.id}
-                className="absolute w-[var(--card-width)] h-[var(--card-height)] card-3d-container pointer-events-none"
-                style={{ top: i * 22, left: 0 }}
-              >
-                <div className="w-full h-full relative card-3d card-3d--face-up cursor-grabbing">
-                  <div
-                    className="absolute inset-0 flex flex-col justify-between overflow-hidden border border-[#d0d0d0] card-face card-front-bg shadow-[0_14px_28px_rgba(0,0,0,0.25),0_10px_10px_rgba(0,0,0,0.22)]"
-                    style={{ borderRadius: 'var(--card-radius)', padding: 'clamp(2px, 0.5vw, 5px)' }}
-                  >
-                    <div className={`flex flex-col items-center leading-none self-start ${textColor}`}>
-                      <span className="font-bold leading-[1.1]" style={{ fontSize: 'var(--card-font-size)' }}>{card.rank}</span>
-                      <span className="leading-none" style={{ fontSize: 'calc(var(--card-font-size) * 0.8)' }}>{SUIT_SYMBOLS[card.suit]}</span>
-                    </div>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                      <span className={`leading-none opacity-85 ${textColor}`} style={{ fontSize: 'var(--card-center-font-size)' }}>{SUIT_SYMBOLS[card.suit]}</span>
-                    </div>
-                    <div className={`flex flex-col items-center leading-none self-end rotate-180 ${textColor}`}>
-                      <span className="font-bold leading-[1.1]" style={{ fontSize: 'var(--card-font-size)' }}>{card.rank}</span>
-                      <span className="leading-none" style={{ fontSize: 'calc(var(--card-font-size) * 0.8)' }}>{SUIT_SYMBOLS[card.suit]}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {isDragging && <DragOverlay cards={dragCards} overlayRef={overlayRef} initialPos={initialPos} />}
 
       {state.hasWon && (
-        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={() => { setIsNewBest(false); handleNewGame(); }} onGoHome={onGoHome} />
+        <WinOverlay moves={state.moves} score={displayScore} time={settings.timerEnabled ? formattedTime : undefined} isNewBest={isNewBest} onNewGame={handleNewGame} onGoHome={onGoHome} />
       )}
 
       {settingsOpen && (

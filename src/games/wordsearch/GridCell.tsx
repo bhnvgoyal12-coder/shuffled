@@ -6,18 +6,8 @@ interface GridCellProps {
   col: number;
   isInDragSelection: boolean;
   isFound: boolean;
+  isHinted?: boolean;
   onPointerDown: (row: number, col: number, e: React.PointerEvent) => void;
-}
-
-// Color palette for found words
-const FOUND_COLORS = [
-  '#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336',
-  '#00BCD4', '#E91E63', '#8BC34A', '#FF5722', '#3F51B5',
-  '#009688', '#FFC107',
-];
-
-export function getFoundColor(index: number): string {
-  return FOUND_COLORS[index % FOUND_COLORS.length];
 }
 
 export const GridCell = React.memo(function GridCell({
@@ -26,13 +16,14 @@ export const GridCell = React.memo(function GridCell({
   col,
   isInDragSelection,
   isFound,
+  isHinted = false,
   onPointerDown,
 }: GridCellProps) {
   return (
     <div
       data-row={row}
       data-col={col}
-      className="flex items-center justify-center font-bold select-none cursor-pointer rounded-md transition-colors duration-100"
+      className={`flex items-center justify-center font-bold select-none cursor-pointer rounded-md transition-colors duration-100 ${isHinted ? 'pile-hint' : ''}`}
       style={{
         width: 'var(--ws-cell-size)',
         height: 'var(--ws-cell-size)',

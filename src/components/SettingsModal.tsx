@@ -3,6 +3,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { CARD_BACK_THEMES } from '../constants';
 import type { CardBackTheme, DrawMode, GameType, SpiderSuitCount } from '../types';
 import { trackSettingChange } from '../utils/analytics';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -16,6 +17,7 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
   const { settings, updateSetting } = useSettings();
   const [confirmDrawChange, setConfirmDrawChange] = useState<DrawMode | null>(null);
   const [confirmSuitChange, setConfirmSuitChange] = useState<SpiderSuitCount | null>(null);
+  useEscapeKey(onClose);
 
   const handleSuitCountChange = (count: SpiderSuitCount) => {
     if (count === settings.spiderSuitCount) return;
@@ -47,6 +49,9 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-[20000] animate-[fadeIn_0.3s_ease] backdrop-blur-[4px]"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -206,6 +211,7 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
               Sound Effects
             </label>
             <ToggleSwitch
+              label="Sound Effects"
               checked={settings.soundEnabled}
               onChange={(v) => { trackSettingChange('soundEnabled', v); updateSetting('soundEnabled', v); }}
             />
@@ -214,7 +220,7 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
 
         {/* Timer */}
         <div className="mb-5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <label className="text-[#555] font-semibold block" style={{ fontSize: 'clamp(12px, 3vw, 14px)' }}>
                 Timer
@@ -224,11 +230,33 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
               </span>
             </div>
             <ToggleSwitch
+              label="Timer"
               checked={settings.timerEnabled}
               onChange={(v) => { trackSettingChange('timerEnabled', v); updateSetting('timerEnabled', v); }}
             />
           </div>
         </div>
+
+        {/* Tap to Move — Klondike & FreeCell */}
+        {(!gameType || gameType === 'klondike' || gameType === 'freecell') && (
+          <div className="mb-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <label className="text-[#555] font-semibold block" style={{ fontSize: 'clamp(12px, 3vw, 14px)' }}>
+                  Tap to Move
+                </label>
+                <span className="text-[#999]" style={{ fontSize: 'clamp(10px, 2.2vw, 12px)' }}>
+                  One tap sends a card to its best spot. Off: tap a card, then tap where it goes
+                </span>
+              </div>
+              <ToggleSwitch
+                label="Tap to Move"
+                checked={settings.tapToMove}
+                onChange={(v) => { trackSettingChange('tapToMove', v); updateSetting('tapToMove', v); }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Auto-Move to Foundation — Klondike & FreeCell */}
         {(!gameType || gameType === 'klondike' || gameType === 'freecell') && (
@@ -243,6 +271,7 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
                 </span>
               </div>
               <ToggleSwitch
+                label="Auto-Move to Foundation"
                 checked={settings.autoMoveToFoundation}
                 onChange={(v) => { trackSettingChange('autoMoveToFoundation', v); updateSetting('autoMoveToFoundation', v); }}
               />
@@ -255,11 +284,12 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
   );
 }
 
-function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function ToggleSwitch({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       className={`relative border-none rounded-full cursor-pointer transition-colors duration-200 shrink-0 ${
         checked ? 'bg-[#2e7d32]' : 'bg-[#ccc]'
       }`}

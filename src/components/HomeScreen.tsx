@@ -54,7 +54,7 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
   return (
     <div
       className="flex-1 flex flex-col items-center w-full overflow-y-auto"
-      style={{ padding: 'clamp(16px, 4vw, 32px) clamp(12px, 3vw, 24px)' }}
+      style={{ padding: 'clamp(16px, 4vw, 32px) clamp(12px, 3vw, 24px) calc(clamp(24px, 5vw, 40px) + env(safe-area-inset-bottom))' }}
     >
       {/* Logo */}
       <div className="text-center mb-4" style={{ marginBottom: 'clamp(20px, 3vh, 40px)' }}>
@@ -116,9 +116,18 @@ export function HomeScreen({ onSelectGame }: HomeScreenProps) {
   );
 }
 
+/** True when there is a game worth returning to — one the player has actually started and not yet won. */
 function hasSavedGame(game: GameType): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEYS[game]) !== null;
+    const raw = localStorage.getItem(STORAGE_KEYS[game]);
+    if (!raw) return false;
+    const saved = JSON.parse(raw);
+    if (game === 'wordsearch') {
+      // A finished level continues with the next one
+      return saved.currentLevel > 1 || saved.foundWords?.length > 0;
+    }
+    if (saved.hasWon) return false;
+    return saved.moves > 0 || saved.history?.length > 0;
   } catch {
     return false;
   }

@@ -10,10 +10,14 @@ interface UseGridDragOptions {
 
 export function useGridDrag({ rows, cols, onSelectionComplete }: UseGridDragOptions) {
   const [dragSelection, setDragSelection] = useState<DragSelection | null>(null);
+  // Mirror of dragSelection for the window listeners
+  const selectionRef = useRef<DragSelection | null>(null);
   const isDragging = useRef(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const onSelectionCompleteRef = useRef(onSelectionComplete);
-  onSelectionCompleteRef.current = onSelectionComplete;
+  useEffect(() => {
+    onSelectionCompleteRef.current = onSelectionComplete;
+  });
 
   const getCellFromPoint = useCallback((x: number, y: number): GridPosition | null => {
     const el = document.elementFromPoint(x, y);
@@ -30,7 +34,8 @@ export function useGridDrag({ rows, cols, onSelectionComplete }: UseGridDragOpti
     e.preventDefault();
     isDragging.current = true;
     const start = { row, col };
-    setDragSelection({ start, current: start, positions: [start] });
+    selectionRef.current = { start, current: start, positions: [start] };
+    setDragSelection(selectionRef.current);
 
     // Capture pointer on the grid container
     if (gridRef.current) {
@@ -45,24 +50,23 @@ export function useGridDrag({ rows, cols, onSelectionComplete }: UseGridDragOpti
       const cell = getCellFromPoint(e.clientX, e.clientY);
       if (!cell) return;
 
-      setDragSelection(prev => {
-        if (!prev) return prev;
-        if (prev.current.row === cell.row && prev.current.col === cell.col) return prev;
-        const positions = computeLinePath(prev.start, cell);
-        return { start: prev.start, current: cell, positions };
-      });
+      const prev = selectionRef.current;
+      if (!prev) return;
+      if (prev.current.row === cell.row && prev.current.col === cell.col) return;
+      selectionRef.current = { start: prev.start, current: cell, positions: computeLinePath(prev.start, cell) };
+      setDragSelection(selectionRef.current);
     };
 
     const handlePointerUp = () => {
       if (!isDragging.current) return;
       isDragging.current = false;
 
-      setDragSelection(prev => {
-        if (prev && prev.positions.length >= 2) {
-          onSelectionCompleteRef.current(prev.positions);
-        }
-        return null;
-      });
+      const selection = selectionRef.current;
+      selectionRef.current = null;
+      setDragSelection(null);
+      if (selection && selection.positions.length >= 2) {
+        onSelectionCompleteRef.current(selection.positions);
+      }
     };
 
     window.addEventListener('pointermove', handlePointerMove);

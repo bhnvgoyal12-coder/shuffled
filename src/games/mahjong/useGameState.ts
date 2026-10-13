@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useEffect } from 'react';
+import { useReducer, useCallback, useEffect, useRef } from 'react';
 import type { MahjongGameState, MahjongGameAction } from './types';
 import {
   dealGame,
@@ -6,8 +6,9 @@ import {
   tilesMatch,
   removePair,
   shuffleRemainingTiles,
-  getHint,
 } from './gameLogic';
+
+import { LEGACY_GAME_ID } from '../../utils/gameId';
 
 const STORAGE_KEY = 'shuffled-mahjong-state';
 
@@ -51,6 +52,7 @@ function gameReducer(state: MahjongGameState, action: MahjongGameAction): Mahjon
       if (state.history.length === 0) return state;
       const prev = state.history[state.history.length - 1];
       return {
+        gameId: state.gameId,
         tiles: prev.tiles,
         removedPairs: prev.removedPairs,
         moves: prev.moves,
@@ -77,6 +79,8 @@ function loadSavedState(): MahjongGameState | null {
     const parsed = JSON.parse(raw) as MahjongGameState;
     if (!parsed.tiles || !Array.isArray(parsed.tiles)) return null;
     parsed.selectedTile = null;
+    if (!parsed.gameId) parsed.gameId = LEGACY_GAME_ID;
+    if (!Array.isArray(parsed.history)) parsed.history = [];
     return parsed;
   } catch {
     return null;
@@ -85,7 +89,7 @@ function loadSavedState(): MahjongGameState | null {
 
 function saveState(state: MahjongGameState): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, selectedTile: null }));
   } catch {
     // silently ignore
   }
@@ -98,7 +102,14 @@ export function useMahjongGameState() {
     return saved ?? dealGame();
   });
 
+  // Persist whenever the board changes (not for selection-only updates)
+  const lastSaved = useRef<MahjongGameState | null>(null);
   useEffect(() => {
+    const prev = lastSaved.current;
+    if (prev && prev.tiles === state.tiles && prev.history === state.history && prev.score === state.score) {
+      return;
+    }
+    lastSaved.current = state;
     saveState(state);
   }, [state]);
 
@@ -109,7 +120,6 @@ export function useMahjongGameState() {
   );
   const shuffle = useCallback(() => dispatch({ type: 'SHUFFLE' }), []);
   const undo = useCallback(() => dispatch({ type: 'UNDO' }), []);
-  const hint = useCallback(() => getHint(state.tiles), [state.tiles]);
 
-  return { state, newGame, selectTile, shuffle, undo, hint };
+  return { state, newGame, selectTile, shuffle, undo };
 }

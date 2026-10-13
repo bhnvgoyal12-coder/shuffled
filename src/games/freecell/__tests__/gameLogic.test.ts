@@ -9,6 +9,10 @@ import {
   findAutoMoveToFoundation,
   findSafeFreeCellAutoMoves,
   canAutoComplete,
+  isMovableRun,
+  findBestMoveTarget,
+  getHint,
+  hasAnyMove,
 } from '../gameLogic';
 import { SUIT_COLORS } from '../../../constants';
 
@@ -18,6 +22,7 @@ function makeCard(rank: Rank, suit: Suit, faceUp = true): Card {
 
 function emptyState(overrides: Partial<FreeCellGameState> = {}): FreeCellGameState {
   return {
+    gameId: 'test',
     freeCells: [null, null, null, null],
     foundations: [[], [], [], []],
     tableau: [[], [], [], [], [], [], [], []],
@@ -321,7 +326,7 @@ describe('canAutoComplete', () => {
     expect(canAutoComplete(state)).toBe(false);
   });
 
-  it('returns false when free cells occupied', () => {
+  it('still allows it with cards parked in free cells (they are always reachable)', () => {
     const state = emptyState({
       freeCells: [makeCard('A', 'hearts'), null, null, null],
       tableau: [
@@ -329,6 +334,135 @@ describe('canAutoComplete', () => {
         [], [], [], [], [], [], [],
       ],
     });
-    expect(canAutoComplete(state)).toBe(false);
+    expect(canAutoComplete(state)).toBe(true);
+  });
+
+  it('returns false for a game that is already won', () => {
+    expect(canAutoComplete(emptyState({ hasWon: true }))).toBe(false);
+  });
+});
+
+// ── isMovableRun ──────────────────────────────────────────────
+
+describe('isMovableRun', () => {
+  const state = emptyState({
+    freeCells: [makeCard('K', 'clubs'), null, null, null],
+    tableau: [
+      [makeCard('9', 'clubs'), makeCard('7', 'hearts'), makeCard('6', 'spades'), makeCard('5', 'diamonds')],
+      [], [], [], [], [], [], [],
+    ],
+  });
+
+  it('accepts an alternating descending run', () => {
+    expect(isMovableRun(state, 'tableau-0', 1)).toBe(true);
+    expect(isMovableRun(state, 'tableau-0', 3)).toBe(true);
+  });
+
+  it('rejects a stack that is not a run', () => {
+    expect(isMovableRun(state, 'tableau-0', 0)).toBe(false);
+  });
+
+  it('accepts the card in a free cell and rejects an empty one', () => {
+    expect(isMovableRun(state, 'freecell-0', 0)).toBe(true);
+    expect(isMovableRun(state, 'freecell-1', 0)).toBe(false);
+  });
+});
+
+// ── findBestMoveTarget ────────────────────────────────────────
+
+describe('findBestMoveTarget', () => {
+  it('prefers a foundation', () => {
+    const state = emptyState({
+      tableau: [[makeCard('A', 'hearts')], [makeCard('2', 'spades')], [], [], [], [], [], []],
+    });
+    expect(findBestMoveTarget(state, 'tableau-0', 0)).toBe('foundation-0');
+  });
+
+  it('prefers building on a column over using a free cell', () => {
+    const state = emptyState({
+      tableau: [
+        [makeCard('K', 'clubs'), makeCard('6', 'spades')],
+        [makeCard('7', 'hearts')],
+        [makeCard('9', 'clubs')], [makeCard('9', 'spades')], [makeCard('J', 'clubs')],
+        [makeCard('J', 'spades')], [makeCard('K', 'spades')], [makeCard('4', 'clubs')],
+      ],
+    });
+    expect(findBestMoveTarget(state, 'tableau-0', 1)).toBe('tableau-1');
+  });
+
+  it('falls back to a free cell when nothing else fits', () => {
+    const state = emptyState({
+      tableau: [
+        [makeCard('K', 'clubs'), makeCard('6', 'spades')],
+        [makeCard('9', 'hearts')],
+        [makeCard('9', 'clubs')], [makeCard('9', 'spades')], [makeCard('J', 'clubs')],
+        [makeCard('J', 'spades')], [makeCard('K', 'spades')], [makeCard('4', 'clubs')],
+      ],
+    });
+    expect(findBestMoveTarget(state, 'tableau-0', 1)).toBe('freecell-0');
+  });
+
+  it('does not shuffle a whole column into an empty column', () => {
+    const state = emptyState({
+      freeCells: [makeCard('2', 'clubs'), makeCard('3', 'clubs'), makeCard('4', 'clubs'), makeCard('5', 'clubs')],
+      tableau: [[makeCard('9', 'hearts')], [], [], [], [], [], [], []],
+    });
+    expect(findBestMoveTarget(state, 'tableau-0', 0)).toBeNull();
+  });
+});
+
+// ── getHint / hasAnyMove ──────────────────────────────────────
+
+describe('getHint', () => {
+  it('suggests a foundation move first', () => {
+    const state = emptyState({
+      freeCells: [makeCard('A', 'spades'), null, null, null],
+      tableau: [[makeCard('6', 'spades')], [makeCard('7', 'hearts')], [], [], [], [], [], []],
+    });
+    expect(getHint(state)).toEqual({ from: 'freecell-0', to: 'foundation-3', cardIndex: 0 });
+  });
+
+  it('suggests joining a whole run onto another column', () => {
+    const state = emptyState({
+      tableau: [
+        [makeCard('K', 'clubs'), makeCard('6', 'spades'), makeCard('5', 'hearts')],
+        [makeCard('7', 'diamonds')],
+        [], [], [], [], [], [],
+      ],
+    });
+    expect(getHint(state)).toEqual({ from: 'tableau-0', to: 'tableau-1', cardIndex: 1 });
+  });
+
+  it('suggests parking a card that covers the next foundation card', () => {
+    const state = emptyState({
+      tableau: [
+        [makeCard('A', 'hearts'), makeCard('9', 'clubs')],
+        [makeCard('9', 'spades')],
+        [], [], [], [], [], [],
+      ],
+    });
+    expect(getHint(state)).toEqual({ from: 'tableau-0', to: 'freecell-0', cardIndex: 1 });
+  });
+});
+
+describe('hasAnyMove', () => {
+  const blockedTableau = [
+    [makeCard('9', 'clubs')], [makeCard('9', 'spades')], [makeCard('J', 'clubs')], [makeCard('J', 'spades')],
+    [makeCard('K', 'clubs')], [makeCard('K', 'spades')], [makeCard('7', 'clubs')], [makeCard('7', 'spades')],
+  ];
+  const fullCells = [makeCard('5', 'clubs'), makeCard('5', 'spades'), makeCard('3', 'clubs'), makeCard('3', 'spades')];
+
+  it('is false when every cell is full and nothing fits anywhere', () => {
+    expect(hasAnyMove(emptyState({ freeCells: fullCells, tableau: blockedTableau }))).toBe(false);
+  });
+
+  it('is true while a free cell is open', () => {
+    const freeCells = [...fullCells.slice(0, 3), null];
+    expect(hasAnyMove(emptyState({ freeCells, tableau: blockedTableau }))).toBe(true);
+  });
+
+  it('is true when a card can still be built on a column', () => {
+    const tableau = [...blockedTableau.slice(0, 7), [makeCard('10', 'hearts')]];
+    expect(hasAnyMove(emptyState({ freeCells: fullCells, tableau }))).toBe(true);
   });
 });

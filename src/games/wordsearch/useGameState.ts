@@ -3,12 +3,14 @@ import type { WordSearchGameState, WordSearchAction, GridPosition } from './type
 import { generateGrid } from './gridGenerator';
 import { getLevelConfig } from './levels';
 import { checkSelection, scoreForWord, levelBonus, isLevelComplete } from './gameLogic';
+import { newGameId, LEGACY_GAME_ID } from '../../utils/gameId';
 
 const STORAGE_KEY = 'shuffled-wordsearch-state';
 
 function createNewGame(level: number = 1, carryScore: number = 0): WordSearchGameState {
   const config = getLevelConfig(level);
   return {
+    gameId: newGameId(),
     grid: generateGrid(config),
     currentLevel: level,
     foundWords: [],
@@ -55,6 +57,7 @@ function gameReducer(state: WordSearchGameState, action: WordSearchAction): Word
       const nextLevel = state.currentLevel + 1;
       const config = getLevelConfig(nextLevel);
       return {
+        gameId: newGameId(),
         grid: generateGrid(config),
         currentLevel: nextLevel,
         foundWords: [],
@@ -94,6 +97,9 @@ function loadState(): WordSearchGameState {
         if (parsed.hasWon) {
           return createNewGame(parsed.currentLevel + 1, parsed.score);
         }
+        if (!parsed.gameId) parsed.gameId = LEGACY_GAME_ID;
+        if (!Array.isArray(parsed.history)) parsed.history = [];
+        if (!Array.isArray(parsed.foundWords)) parsed.foundWords = [];
         return parsed;
       }
     }

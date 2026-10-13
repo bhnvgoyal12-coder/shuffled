@@ -22,6 +22,8 @@ export interface SelectedCard {
 }
 
 export interface GameState {
+  /** Identifies this deal (ties the clock and stats to it) */
+  gameId: string;
   stock: Card[];
   waste: Card[];
   foundations: Card[][];
@@ -70,4 +72,6 @@ export interface Settings {
   spiderSuitCount: SpiderSuitCount;
   homeLayout: HomeLayout;
   timerEnabled: boolean;
+  /** Tapping a card sends it straight to its best legal destination */
+  tapToMove: boolean;
 }

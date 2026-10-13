@@ -36,6 +36,8 @@ export interface DragSelection {
 }
 
 export interface WordSearchGameState {
+  /** Identifies this level's puzzle (ties the clock and stats to it) */
+  gameId: string;
   grid: Grid;
   currentLevel: number;
   foundWords: string[];

@@ -18,6 +18,7 @@ function makeCard(rank: Rank, suit: Suit, faceUp = true, copy = 0): Card {
 
 function emptyState(overrides: Partial<SpiderGameState> = {}): SpiderGameState {
   return {
+    gameId: 'test',
     stock: [],
     tableau: [[], [], [], [], [], [], [], [], [], []],
     completedSuits: 0,

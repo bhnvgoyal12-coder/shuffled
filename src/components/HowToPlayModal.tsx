@@ -1,4 +1,5 @@
 import type { GameType } from '../types';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 interface HowToPlayModalProps {
   gameType: GameType;
@@ -6,8 +7,13 @@ interface HowToPlayModalProps {
 }
 
 export function HowToPlayModal({ gameType, onClose }: HowToPlayModalProps) {
+  useEscapeKey(onClose);
+
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="How to play"
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-[20000] animate-[fadeIn_0.3s_ease] backdrop-blur-[4px]"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -82,8 +88,11 @@ function KlondikeRules() {
       <Section title="Stock & Waste">
         <p className="m-0">Tap the stock pile to draw cards. Play the top card of the waste pile to the tableau or foundations.</p>
       </Section>
+      <Section title="Moving Cards">
+        <p className="m-0">Tap a card to send it to the best available spot, or drag it exactly where you want it. Stuck? The lightbulb suggests a move, and Undo takes back as many moves as you like.</p>
+      </Section>
       <Section title="Foundations">
-        <p className="m-0">Build up by suit from Ace to King. Cards here are locked in place.</p>
+        <p className="m-0">Build up by suit from Ace to King. A card can be brought back down to the tableau if you need it, at a cost of 15 points.</p>
       </Section>
       <Section title="Tip">
         <p className="m-0 text-[#888] italic">Focus on revealing face-down cards and freeing up columns for Kings.</p>
@@ -106,6 +115,9 @@ function FreeCellRules() {
       </Section>
       <Section title="Supermove">
         <p className="m-0">Move groups of cards at once depending on how many free cells and empty columns are available. More open spaces means bigger moves.</p>
+      </Section>
+      <Section title="Moving Cards">
+        <p className="m-0">Tap a card to send it to the best available spot — a foundation, another column, or a free cell — or drag it exactly where you want it. The lightbulb suggests a move.</p>
       </Section>
       <Section title="Tip">
         <p className="m-0 text-[#888] italic">Keep free cells open as long as possible. The more available, the larger groups you can move.</p>
@@ -143,7 +155,7 @@ function WordSearchRules() {
         <p className="m-0">Find all the hidden words in the letter grid to complete each level.</p>
       </Section>
       <Section title="How to Select">
-        <p className="m-0">Touch a letter and drag in a straight line (horizontal, vertical, or diagonal) to highlight a word. Release to submit your selection.</p>
+        <p className="m-0">Touch a letter and drag in a straight line (horizontal, vertical, or diagonal) to highlight a word. Release to submit your selection. Can't spot one? The lightbulb shows where a word starts.</p>
       </Section>
       <Section title="Levels">
         <p className="m-0">Each level gets harder with larger grids, more words, and additional directions. Complete all words to advance to the next level.</p>
@@ -171,7 +183,7 @@ function MahjongRules() {
         <p className="m-0">Tap two free tiles with the same face to remove them. Suited tiles match by exact type and number. All Seasons match each other, and all Flowers match each other.</p>
       </Section>
       <Section title="Shuffle & Hint">
-        <p className="m-0">Stuck? Use Shuffle to rearrange remaining tiles (-50 pts) or Hint to highlight a valid pair (-10 pts).</p>
+        <p className="m-0">Stuck? The lightbulb highlights a pair you can remove, and Shuffle rearranges the remaining tiles (-50 pts). Every new board can be cleared.</p>
       </Section>
       <Section title="Tip">
         <p className="m-0 text-[#888] italic">Work from the top layers down. Prioritize removing tiles that free up others underneath.</p>

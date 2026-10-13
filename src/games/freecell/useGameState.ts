@@ -1,8 +1,11 @@
-import { useReducer, useCallback, useEffect } from 'react';
+import { useReducer, useCallback, useEffect, useRef } from 'react';
 import type { Card, FreeCellGameState, FreeCellGameAction, FreeCellPileId, FreeCellHistoryEntry } from './types';
-import { dealFreeCellGame, isValidFreeCellMove, checkWin, calculateScore, getPileCards } from './gameLogic';
+import { dealFreeCellGame, isValidFreeCellMove, isMovableRun, checkWin, calculateScore } from './gameLogic';
+import { LEGACY_GAME_ID } from '../../utils/gameId';
 
 const STORAGE_KEY = 'shuffled-freecell-state';
+/** Undo depth. Every entry is a full snapshot, so an unbounded history would outgrow localStorage. */
+const MAX_HISTORY = 200;
 
 function cloneCards(cards: Card[]): Card[] {
   return cards.map(c => ({ ...c }));
@@ -26,7 +29,8 @@ function applyMove(
 ): FreeCellGameState {
   if (!isValidFreeCellMove(state, from, to, cardIndex)) return state;
 
-  const history = [...state.history, saveHistory(state)];
+  let history = [...state.history, saveHistory(state)];
+  if (history.length > MAX_HISTORY) history = history.slice(history.length - MAX_HISTORY);
 
   const newFreeCells = state.freeCells.map(c => c ? { ...c } : null);
   const newFoundations = state.foundations.map(cloneCards);
@@ -61,6 +65,7 @@ function applyMove(
   const score = state.score + calculateScore(to);
 
   const newState: FreeCellGameState = {
+    gameId: state.gameId,
     freeCells: newFreeCells,
     foundations: newFoundations,
     tableau: newTableau,
@@ -88,6 +93,7 @@ export function gameReducer(state: FreeCellGameState, action: FreeCellGameAction
       const prev = state.history[state.history.length - 1];
       return {
         ...prev,
+        gameId: state.gameId,
         history: state.history.slice(0, -1),
         hasWon: false,
         selectedCard: null,
@@ -98,8 +104,8 @@ export function gameReducer(state: FreeCellGameState, action: FreeCellGameAction
       const { pileId, cardIndex } = action;
 
       if (state.selectedCard === null) {
-        const pile = getPileCards(state, pileId);
-        if (cardIndex >= 0 && cardIndex < pile.length) {
+        // Only a run that can actually be picked up together may be selected
+        if (isMovableRun(state, pileId, cardIndex)) {
           return { ...state, selectedCard: { pileId, cardIndex } };
         }
         return state;
@@ -117,8 +123,7 @@ export function gameReducer(state: FreeCellGameState, action: FreeCellGameAction
       }
 
       // Re-select different card
-      const targetPile = getPileCards(state, pileId);
-      if (cardIndex >= 0 && cardIndex < targetPile.length) {
+      if (isMovableRun(state, pileId, cardIndex)) {
         return { ...state, selectedCard: { pileId, cardIndex } };
       }
 
@@ -149,6 +154,8 @@ function loadSavedState(): FreeCellGameState | null {
       return null;
     }
     parsed.selectedCard = null;
+    if (!parsed.gameId) parsed.gameId = LEGACY_GAME_ID;
+    if (!Array.isArray(parsed.history)) parsed.history = [];
     return parsed;
   } catch {
     return null;
@@ -157,7 +164,7 @@ function loadSavedState(): FreeCellGameState | null {
 
 function saveState(state: FreeCellGameState): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, selectedCard: null }));
   } catch {
     // silently ignore
   }
@@ -170,7 +177,20 @@ export function useFreeCellGameState() {
     return saved ?? dealFreeCellGame();
   });
 
+  // Persist whenever the cards change (not for selection-only updates)
+  const lastSaved = useRef<FreeCellGameState | null>(null);
   useEffect(() => {
+    const prev = lastSaved.current;
+    if (
+      prev &&
+      prev.freeCells === state.freeCells &&
+      prev.foundations === state.foundations &&
+      prev.tableau === state.tableau &&
+      prev.history === state.history
+    ) {
+      return;
+    }
+    lastSaved.current = state;
     saveState(state);
   }, [state]);
 

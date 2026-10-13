@@ -7,7 +7,7 @@
 
 type GameType = 'klondike' | 'freecell' | 'spider' | 'mahjong' | 'wordsearch';
 
-/* global gtag shim — defined in index.html */
+// gtag shim, defined in index.html
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;

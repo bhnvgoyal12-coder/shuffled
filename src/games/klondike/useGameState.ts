@@ -1,9 +1,12 @@
-import { useReducer, useCallback, useEffect } from 'react';
+import { useReducer, useCallback, useEffect, useRef } from 'react';
 import type { GameState, GameAction, PileId, HistoryEntry, Card } from './types';
 import { dealGame, isValidMove, checkWin, calculateScore } from './gameLogic';
+import { LEGACY_GAME_ID } from '../../utils/gameId';
 
 const STORAGE_KEY = 'shuffled-klondike-state';
 const OLD_STORAGE_KEY = 'solitaire-game-state';
+/** Undo depth. Every entry is a full snapshot, so an unbounded history would outgrow localStorage. */
+const MAX_HISTORY = 200;
 
 function cloneCards(cards: Card[]): Card[] {
   return cards.map(c => ({ ...c }));
@@ -21,6 +24,11 @@ function saveHistory(state: GameState): HistoryEntry {
   };
 }
 
+function pushHistory(state: GameState): HistoryEntry[] {
+  const history = [...state.history, saveHistory(state)];
+  return history.length > MAX_HISTORY ? history.slice(history.length - MAX_HISTORY) : history;
+}
+
 function getPileCards(state: GameState, pileId: PileId): Card[] {
   if (pileId === 'stock') return state.stock;
   if (pileId === 'waste') return state.waste;
@@ -36,7 +44,7 @@ function getPileCards(state: GameState, pileId: PileId): Card[] {
 function applyMove(state: GameState, from: PileId, to: PileId, cardIndex: number): GameState {
   if (!isValidMove(state, from, to, cardIndex)) return state;
 
-  const history = [...state.history, saveHistory(state)];
+  const history = pushHistory(state);
 
   // Deep clone current piles
   const newStock = cloneCards(state.stock);
@@ -75,6 +83,7 @@ function applyMove(state: GameState, from: PileId, to: PileId, cardIndex: number
   const score = state.score + calculateScore(from, to);
 
   const newState: GameState = {
+    gameId: state.gameId,
     stock: newStock,
     waste: newWaste,
     foundations: newFoundations,
@@ -101,7 +110,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'DRAW_STOCK': {
       const count = action.count ?? 1;
-      const history = [...state.history, saveHistory(state)];
+      if (state.stock.length === 0 && state.waste.length === 0) return state;
+      const history = pushHistory(state);
 
       if (state.stock.length > 0) {
         const newStock = cloneCards(state.stock);
@@ -145,6 +155,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const prev = state.history[state.history.length - 1];
       return {
         ...prev,
+        gameId: state.gameId,
         history: state.history.slice(0, -1),
         hasWon: false,
         selectedCard: null,
@@ -220,6 +231,8 @@ function loadSavedState(): GameState | null {
     parsed.selectedCard = null;
     // Backfill for saves from before wasteFanCount existed
     if (parsed.wasteFanCount == null) parsed.wasteFanCount = 1;
+    if (!parsed.gameId) parsed.gameId = LEGACY_GAME_ID;
+    if (!Array.isArray(parsed.history)) parsed.history = [];
     return parsed;
   } catch {
     return null;
@@ -228,7 +241,7 @@ function loadSavedState(): GameState | null {
 
 function saveState(state: GameState): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, selectedCard: null }));
   } catch {
     // Storage full or unavailable — silently ignore
   }
@@ -242,8 +255,21 @@ export function useGameState() {
     return saved ?? dealGame();
   });
 
-  // Persist state to localStorage on every change
+  // Persist state to localStorage whenever the cards change (not for selection-only updates)
+  const lastSaved = useRef<GameState | null>(null);
   useEffect(() => {
+    const prev = lastSaved.current;
+    if (
+      prev &&
+      prev.stock === state.stock &&
+      prev.waste === state.waste &&
+      prev.foundations === state.foundations &&
+      prev.tableau === state.tableau &&
+      prev.history === state.history
+    ) {
+      return;
+    }
+    lastSaved.current = state;
     saveState(state);
   }, [state]);
 

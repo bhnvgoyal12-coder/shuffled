@@ -1,71 +1,76 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PileId } from './types';
 import { useGameState } from './useGameState';
 import { useDragAndDrop } from '../../hooks/useDragAndDrop';
+import { useCardFlight } from '../../hooks/useCardFlight';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useSound } from '../../hooks/useSound';
+import { useToast } from '../../hooks/useToast';
 import {
   canAutoComplete,
-  getAutoCompleteMove,
+  getAutoCompleteStep,
   findAutoMoveToFoundation,
+  findBestMoveTarget,
   findSafeAutoMoves,
+  getHint,
   getValidDropTargets,
   getPileCards,
+  type Hint,
 } from './gameLogic';
-import { SUIT_SYMBOLS } from '../../constants';
 import { TopBar } from '../../components/TopBar';
 import { StockPile } from './StockPile';
 import { WastePile } from './WastePile';
 import { FoundationPile } from '../../components/FoundationPile';
 import { TableauPile } from './TableauPile';
+import { DragOverlay } from '../../components/DragOverlay';
+import { Toast } from '../../components/Toast';
 import { WinOverlay } from '../../components/WinOverlay';
 import { SettingsModal } from '../../components/SettingsModal';
 import { HowToPlayModal } from '../../components/HowToPlayModal';
-
+import { StatsModal } from '../../components/StatsModal';
 
 import { useGameTimer } from '../../hooks/useGameTimer';
 import { computeDisplayScore } from '../../utils/scoreDrain';
+import { shakeCard } from '../../utils/shakeCard';
 import { trackNewGame, trackGameWon, trackUndo, trackAutoComplete, trackOpenSettings, trackOpenHelp } from '../../utils/analytics';
-import { saveBestScore } from '../../utils/highScores';
-import { recordGamePlayed, recordGameWon } from '../../utils/gameStats';
-import { StatsModal } from '../../components/StatsModal';
+import { getBestScore, saveBestScore } from '../../utils/highScores';
+import { recordGameStarted, recordGameWon } from '../../utils/gameStats';
 
 const DOUBLE_TAP_MS = 400;
+const HINT_MS = 2500;
+
+type OpenModal = 'settings' | 'help' | 'stats' | null;
 
 interface KlondikeBoardProps {
   onGoHome?: () => void;
 }
 
 export function Board({ onGoHome }: KlondikeBoardProps) {
-  const { state, newGame, drawStock, moveCards, undo, selectCard } =
+  const { state, newGame, drawStock, moveCards, undo, selectCard, clearSelection } =
     useGameState();
   const { settings } = useSettings();
   const { play } = useSound();
+  const { toast, showToast } = useToast();
 
-  const { elapsedSeconds, resetTimer, formattedTime } = useGameTimer({
+  const [openModal, setOpenModal] = useState<OpenModal>(null);
+
+  // The clock starts with the first move or draw, and stops while a menu is open
+  const hasStarted = state.moves > 0 || state.history.length > 0;
+  const { elapsedSeconds, formattedTime } = useGameTimer({
     gameType: 'klondike',
-    isGameOver: state.hasWon,
-    timerEnabled: settings.timerEnabled,
+    gameId: state.gameId,
+    isRunning: hasStarted && !state.hasWon && openModal === null,
   });
   const displayScore = computeDisplayScore(state.score, elapsedSeconds, settings.timerEnabled);
 
-  const [statsOpen, setStatsOpen] = useState(false);
+  useEffect(() => {
+    if (hasStarted) recordGameStarted('klondike', state.gameId);
+  }, [hasStarted, state.gameId]);
 
   const handleNewGame = useCallback(() => {
     trackNewGame('klondike');
-    recordGamePlayed('klondike');
     newGame();
-    resetTimer();
-  }, [newGame, resetTimer]);
-
-  // Wrap moveCards to play sound on drag-drop
-  const moveCardsWithSound = useCallback(
-    (from: string, to: string, cardIndex: number) => {
-      moveCards(from as PileId, to as PileId, cardIndex);
-      play('cardPlace');
-    },
-    [moveCards, play]
-  );
+  }, [newGame]);
 
   const {
     isDragging,
@@ -75,33 +80,84 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
     overlayRef,
     initialPos,
     handlePointerDown,
-  } = useDragAndDrop(
+  } = useDragAndDrop({
     state,
-    moveCardsWithSound,
-    (s, from, idx) => getValidDropTargets(s, from as PileId, idx),
-    (s, id) => getPileCards(s, id as PileId),
+    moveCards: (from, to, cardIndex) => moveCards(from as PileId, to as PileId, cardIndex),
+    getValidDropTargets: (s, from, idx) => getValidDropTargets(s, from as PileId, idx),
+    getPile: (s, id) => getPileCards(s, id as PileId),
+    onRelease: (positions) => setFlightOrigins(positions),
+  });
+
+  const { boardRef, setFlightOrigins } = useCardFlight(
+    [state.stock, state.waste, state.foundations, state.tableau, isDragging],
+    { spawnFrom: '[data-pile-id="stock"]' },
   );
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const showAutoComplete = canAutoComplete(state) && !state.hasWon;
+  // One sound per card move, however it was made (tap, drag, auto-move)
+  const lastMoves = useRef(state.moves);
+  useEffect(() => {
+    if (state.moves > lastMoves.current) play('cardPlace');
+    lastMoves.current = state.moves;
+  }, [state.moves, play]);
 
+  // ── Hint ────────────────────────────────────────────────────
+  // Remembered together with the position it was computed for, so it disappears as soon as a card moves
+  const [hintState, setHintState] = useState<{ hint: Hint; history: unknown } | null>(null);
+  const hint = hintState && hintState.history === state.history ? hintState.hint : null;
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (hintTimer.current) clearTimeout(hintTimer.current); }, []);
+
+  const showHint = useCallback(() => {
+    if (state.hasWon) return;
+    const next = getHint(state);
+    if (!next) {
+      showToast('No moves left — try Undo or a new game');
+      return;
+    }
+    clearSelection();
+    setHintState({ hint: next, history: state.history });
+    if (hintTimer.current) clearTimeout(hintTimer.current);
+    hintTimer.current = setTimeout(() => setHintState(null), HINT_MS);
+  }, [state, clearSelection, showToast]);
+
+  // ── Tapping cards ───────────────────────────────────────────
   // Custom double-tap detector — browser dblclick is unreliable with touch-none
   const lastTap = useRef<{ pileId: PileId; cardIndex: number; time: number } | null>(null);
 
   const handleCardClick = useCallback(
     (pileId: string, cardIndex: number) => {
       const id = pileId as PileId;
+      const card = getPileCards(state, id)[cardIndex];
+      if (!card) return;
+
+      // A card is already picked up: this tap says where it goes
+      if (state.selectedCard) {
+        selectCard(id, cardIndex);
+        return;
+      }
+      if (!card.faceUp) return;
+
+      if (settings.tapToMove) {
+        const target = findBestMoveTarget(state, id, cardIndex);
+        if (target) {
+          moveCards(id, target, cardIndex);
+        } else if (getValidDropTargets(state, id, cardIndex).length > 0) {
+          // It can move, but there is no obvious best place — let the player choose
+          selectCard(id, cardIndex);
+        } else {
+          shakeCard(card.id);
+        }
+        return;
+      }
+
       const now = Date.now();
       const prev = lastTap.current;
-
       if (prev && prev.pileId === id && prev.cardIndex === cardIndex && now - prev.time < DOUBLE_TAP_MS) {
-        // Double-tap detected — try auto-move to foundation
+        // Double-tap — send the card to a foundation if it fits
         lastTap.current = null;
         const target = findAutoMoveToFoundation(state, id, cardIndex);
         if (target) {
           moveCards(id, target, cardIndex);
-          play('cardPlace');
           return;
         }
       }
@@ -109,7 +165,7 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
       lastTap.current = { pileId: id, cardIndex, time: now };
       selectCard(id, cardIndex);
     },
-    [selectCard, state, moveCards, play]
+    [selectCard, state, moveCards, settings.tapToMove]
   );
 
   const handlePileClick = useCallback(
@@ -122,39 +178,58 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
   );
 
   const handleDrawStock = useCallback(() => {
+    if (state.stock.length === 0 && state.waste.length === 0) return;
     drawStock(settings.drawMode);
     play('stockClick');
-  }, [drawStock, settings.drawMode, play]);
+  }, [drawStock, settings.drawMode, play, state.stock.length, state.waste.length]);
 
-  // Auto-complete via repeated effect
-  const [autoCompleting, setAutoCompleting] = React.useState(false);
+  // ── Auto-finish ─────────────────────────────────────────────
+  // Stored per deal, so it switches itself off when a new game starts
+  const [autoCompleteFor, setAutoCompleteFor] = useState<string | null>(null);
+  const autoCompleting = autoCompleteFor === state.gameId && !state.hasWon;
+  const showAutoComplete = useMemo(
+    () => !autoCompleting && canAutoComplete(state, settings.drawMode),
+    [autoCompleting, state, settings.drawMode]
+  );
 
   const startAutoComplete = useCallback(() => {
     trackAutoComplete('klondike');
-    setAutoCompleting(true);
-  }, []);
+    clearSelection();
+    setAutoCompleteFor(state.gameId);
+  }, [clearSelection, state.gameId]);
 
   useEffect(() => {
     if (!autoCompleting) return;
-
-    const move = getAutoCompleteMove(state);
-    if (!move || state.hasWon) {
-      setAutoCompleting(false);
-      return;
-    }
+    const step = getAutoCompleteStep(state);
+    if (!step) return;
 
     const timeout = setTimeout(() => {
-      moveCards(move.from, move.to, move.cardIndex);
-      play('cardPlace');
-    }, 120);
+      if (step.type === 'move') moveCards(step.from, step.to, step.cardIndex);
+      else drawStock(settings.drawMode);
+    }, step.type === 'move' ? 110 : 70);
 
     return () => clearTimeout(timeout);
-  }, [autoCompleting, state, moveCards, play]);
+  }, [autoCompleting, state, moveCards, drawStock, settings.drawMode]);
+
+  // ── Undo ────────────────────────────────────────────────────
+  // After an undo, automatic foundation moves wait until the player makes their own
+  // next move — otherwise the card that was just taken back would be sent straight up again.
+  const autoMoveHold = useRef(-1);
+
+  const handleUndo = useCallback(() => {
+    if (state.history.length === 0) return;
+    trackUndo('klondike');
+    autoMoveHold.current = state.history.length - 1;
+    setAutoCompleteFor(null);
+    undo();
+  }, [state.history.length, undo]);
 
   // Auto-move safe cards to foundation
   useEffect(() => {
     if (!settings.autoMoveToFoundation) return;
-    if (state.hasWon || autoCompleting) return;
+    if (state.hasWon || autoCompleting || isDragging) return;
+    if (state.history.length <= autoMoveHold.current) return;
+    autoMoveHold.current = -1;
 
     const safeMoves = findSafeAutoMoves(state);
     if (safeMoves.length === 0) return;
@@ -162,71 +237,108 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
     const timeout = setTimeout(() => {
       const move = safeMoves[0];
       moveCards(move.from, move.to, move.cardIndex);
-      play('cardPlace');
     }, 200);
 
     return () => clearTimeout(timeout);
-  }, [state, settings.autoMoveToFoundation, autoCompleting, moveCards, play]);
+  }, [state, settings.autoMoveToFoundation, autoCompleting, isDragging, moveCards]);
 
-  // Win celebration sound + analytics + high score
-  const prevWon = useRef(false);
-  const [isNewBest, setIsNewBest] = useState(false);
+  // ── Winning ─────────────────────────────────────────────────
+  const [bestBefore, setBestBefore] = useState(() => ({
+    gameId: state.gameId,
+    score: getBestScore('klondike')?.score ?? null,
+  }));
+  if (bestBefore.gameId !== state.gameId) {
+    setBestBefore({ gameId: state.gameId, score: getBestScore('klondike')?.score ?? null });
+  }
+  const isNewBest = state.hasWon && (bestBefore.score === null || displayScore > bestBefore.score);
+
+  const recordedWin = useRef<string | null>(null);
   useEffect(() => {
-    if (state.hasWon && !prevWon.current) {
-      play('winCelebration');
-      trackGameWon('klondike', state.moves, elapsedSeconds, state.score);
-      recordGameWon('klondike', elapsedSeconds);
-      const newBest = saveBestScore('klondike', {
-        score: displayScore,
-        moves: state.moves,
-        elapsedSeconds,
-        date: Date.now(),
-      });
-      setIsNewBest(newBest);
-    }
-    prevWon.current = state.hasWon;
-  }, [state.hasWon, play, state.moves, elapsedSeconds, state.score, displayScore]);
+    if (!state.hasWon || recordedWin.current === state.gameId) return;
+    recordedWin.current = state.gameId;
+    play('winCelebration');
+    trackGameWon('klondike', state.moves, elapsedSeconds, state.score);
+    recordGameWon('klondike', state.gameId, elapsedSeconds);
+    saveBestScore('klondike', {
+      score: displayScore,
+      moves: state.moves,
+      elapsedSeconds,
+      date: Date.now(),
+    });
+  }, [state.hasWon, state.gameId, play, state.moves, elapsedSeconds, state.score, displayScore]);
 
-  const validTargetSet = new Set(validTargets);
+  // ── Highlights ──────────────────────────────────────────────
+  const highlightedPiles = useMemo(() => {
+    const piles = new Set<string>(validTargets);
+    if (state.selectedCard) {
+      getValidDropTargets(state, state.selectedCard.pileId, state.selectedCard.cardIndex)
+        .forEach(id => piles.add(id));
+    }
+    if (hint?.type === 'move') piles.add(hint.to);
+    return piles;
+  }, [validTargets, state, hint]);
+
+  const hintMove = hint?.type === 'move' ? hint : null;
+  const wasteTop = state.waste[state.waste.length - 1];
 
   return (
-    <div className="flex-1 flex flex-col w-full overflow-y-auto">
+    <div
+      className="flex-1 flex flex-col w-full overflow-y-auto"
+      onClick={(e) => {
+        if (!state.selectedCard) return;
+        if ((e.target as HTMLElement).closest('[data-pile-id], [data-card-id], button')) return;
+        clearSelection();
+      }}
+    >
       <TopBar
         moves={state.moves}
         score={displayScore}
         timerDisplay={settings.timerEnabled ? formattedTime : undefined}
         canAutoComplete={showAutoComplete}
+        canUndo={state.history.length > 0 && !state.hasWon}
+        confirmNewGame={hasStarted && !state.hasWon}
+        newGameWarning="Your current game will be abandoned and count as a loss."
         onNewGame={handleNewGame}
-        onUndo={() => { trackUndo('klondike'); undo(); }}
+        onUndo={handleUndo}
         onAutoComplete={startAutoComplete}
-        onOpenSettings={() => { trackOpenSettings('klondike'); setSettingsOpen(true); }}
-        onOpenHelp={() => { trackOpenHelp('klondike'); setHelpOpen(true); }}
-        onOpenStats={() => setStatsOpen(true)}
+        onHint={showHint}
+        onOpenSettings={() => { trackOpenSettings('klondike'); setOpenModal('settings'); }}
+        onOpenHelp={() => { trackOpenHelp('klondike'); setOpenModal('help'); }}
+        onOpenStats={() => setOpenModal('stats')}
         onGoHome={onGoHome}
       />
-      <div className="board-grid mx-auto w-full justify-center">
+      <div className="board-grid mx-auto w-full justify-center" ref={boardRef}>
         {/* Top row */}
-        <StockPile cards={state.stock} onDraw={handleDrawStock} />
-        <WastePile
-          cards={state.waste}
-          drawMode={settings.drawMode}
-          fanCount={state.wasteFanCount}
-          selectedCardIndex={
-            state.selectedCard?.pileId === 'waste'
-              ? state.selectedCard.cardIndex
-              : null
-          }
-          isValidTarget={validTargetSet.has('waste')}
-          onPointerDown={handlePointerDown}
-          onCardClick={handleCardClick}
+        <StockPile
+          cards={state.stock}
+          canRecycle={state.waste.length > 0}
+          isHinted={hint?.type === 'draw'}
+          onDraw={handleDrawStock}
         />
-        <div style={{ width: 'var(--card-width)' }} />
+        <div style={{ gridColumn: 'span 2' }}>
+          <WastePile
+            cards={state.waste}
+            drawMode={settings.drawMode}
+            fanCount={state.wasteFanCount}
+            selectedCardIndex={
+              state.selectedCard?.pileId === 'waste'
+                ? state.selectedCard.cardIndex
+                : null
+            }
+            isHinted={hintMove?.from === 'waste'}
+            isDragging={wasteTop !== undefined && draggingCardIds.has(wasteTop.id)}
+            onPointerDown={handlePointerDown}
+            onCardClick={handleCardClick}
+          />
+        </div>
         {state.foundations.map((pile, i) => (
           <FoundationPile
             key={i}
             index={i}
             cards={pile}
-            isValidTarget={validTargetSet.has(`foundation-${i}` as PileId)}
+            isValidTarget={highlightedPiles.has(`foundation-${i}`)}
+            isSelected={state.selectedCard?.pileId === `foundation-${i}`}
+            onPointerDown={handlePointerDown}
             onCardClick={handleCardClick}
             onPileClick={handlePileClick}
           />
@@ -239,7 +351,8 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
             index={i}
             cards={pile}
             selectedCard={state.selectedCard}
-            isValidTarget={validTargetSet.has(`tableau-${i}` as PileId)}
+            isValidTarget={highlightedPiles.has(`tableau-${i}`)}
+            hintFromIndex={hintMove?.from === `tableau-${i}` ? hintMove.cardIndex : null}
             draggingCards={draggingCardIds}
             onPointerDown={handlePointerDown}
             onCardClick={handleCardClick}
@@ -248,60 +361,9 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
         ))}
       </div>
 
-      {/* Drag overlay */}
-      {isDragging && (
-        <div
-          className="fixed top-0 left-0 pointer-events-none z-[10000]"
-          ref={overlayRef}
-          style={initialPos ? { transform: `translate(${initialPos.x}px, ${initialPos.y}px)` } : undefined}
-        >
-          {dragCards.map((card, i) => {
-            const textColor = card.color === 'red' ? 'text-[#d32f2f]' : 'text-[#212121]';
-            return (
-              <div
-                key={card.id}
-                className="absolute w-[var(--card-width)] h-[var(--card-height)] card-3d-container pointer-events-none"
-                style={{ top: i * 22, left: 0 }}
-              >
-                <div className="w-full h-full relative card-3d card-3d--face-up cursor-grabbing">
-                  <div
-                    className="absolute inset-0 flex flex-col justify-between overflow-hidden border border-[#d0d0d0] card-face card-front-bg shadow-[0_14px_28px_rgba(0,0,0,0.25),0_10px_10px_rgba(0,0,0,0.22)]"
-                    style={{
-                      borderRadius: 'var(--card-radius)',
-                      padding: 'clamp(2px, 0.5vw, 5px)',
-                    }}
-                  >
-                    <div className={`flex flex-col items-center leading-none self-start ${textColor}`}>
-                      <span className="font-bold leading-[1.1]" style={{ fontSize: 'var(--card-font-size)' }}>
-                        {card.rank}
-                      </span>
-                      <span className="leading-none" style={{ fontSize: 'calc(var(--card-font-size) * 0.8)' }}>
-                        {SUIT_SYMBOLS[card.suit]}
-                      </span>
-                    </div>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                      <span
-                        className={`leading-none opacity-85 ${textColor}`}
-                        style={{ fontSize: 'var(--card-center-font-size)' }}
-                      >
-                        {SUIT_SYMBOLS[card.suit]}
-                      </span>
-                    </div>
-                    <div className={`flex flex-col items-center leading-none self-end rotate-180 ${textColor}`}>
-                      <span className="font-bold leading-[1.1]" style={{ fontSize: 'var(--card-font-size)' }}>
-                        {card.rank}
-                      </span>
-                      <span className="leading-none" style={{ fontSize: 'calc(var(--card-font-size) * 0.8)' }}>
-                        {SUIT_SYMBOLS[card.suit]}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {isDragging && <DragOverlay cards={dragCards} overlayRef={overlayRef} initialPos={initialPos} />}
+
+      <Toast message={toast} />
 
       {state.hasWon && (
         <WinOverlay
@@ -309,25 +371,25 @@ export function Board({ onGoHome }: KlondikeBoardProps) {
           score={displayScore}
           time={settings.timerEnabled ? formattedTime : undefined}
           isNewBest={isNewBest}
-          onNewGame={() => { setIsNewBest(false); handleNewGame(); }}
+          onNewGame={handleNewGame}
           onGoHome={onGoHome}
         />
       )}
 
-      {settingsOpen && (
+      {openModal === 'settings' && (
         <SettingsModal
-          onClose={() => setSettingsOpen(false)}
-          onNewGame={() => { handleNewGame(); setSettingsOpen(false); }}
+          onClose={() => setOpenModal(null)}
+          onNewGame={() => { handleNewGame(); setOpenModal(null); }}
           gameType="klondike"
         />
       )}
 
-      {helpOpen && (
-        <HowToPlayModal gameType="klondike" onClose={() => setHelpOpen(false)} />
+      {openModal === 'help' && (
+        <HowToPlayModal gameType="klondike" onClose={() => setOpenModal(null)} />
       )}
 
-      {statsOpen && (
-        <StatsModal gameType="klondike" onClose={() => setStatsOpen(false)} />
+      {openModal === 'stats' && (
+        <StatsModal gameType="klondike" onClose={() => setOpenModal(null)} />
       )}
     </div>
   );

@@ -1,5 +1,6 @@
-import type { Card, GameState, PileId } from './types';
+import type { Card, DrawMode, GameState, PileId } from './types';
 import { SUITS, RANKS, SUIT_COLORS, RANK_VALUES, FOUNDATION_SUITS } from '../../constants';
+import { newGameId } from '../../utils/gameId';
 
 function createDeck(): Card[] {
   const deck: Card[] = [];
@@ -45,6 +46,7 @@ export function dealGame(): GameState {
   const stock = deck.slice(cardIndex).map(c => ({ ...c, faceUp: false }));
 
   return {
+    gameId: newGameId(),
     stock,
     waste: [],
     foundations: [[], [], [], []],
@@ -139,17 +141,67 @@ export function checkWin(state: GameState): boolean {
   return state.foundations.every(f => f.length === 13);
 }
 
-export function canAutoComplete(state: GameState): boolean {
-  if (state.stock.length > 0) return false;
-  if (state.waste.length > 0) {
-    // waste is ok if all tableau cards are face up
-  }
-  for (const pile of state.tableau) {
-    for (const card of pile) {
-      if (!card.faceUp) return false;
+function allTableauFaceUp(state: GameState): boolean {
+  return state.tableau.every(pile => pile.every(card => card.faceUp));
+}
+
+export type AutoCompleteStep =
+  | { type: 'draw' }
+  | { type: 'move'; from: PileId; to: PileId; cardIndex: number };
+
+/**
+ * Next step of an auto-finish: play a card to a foundation, or turn the stock
+ * when the card that is needed is still in the stock / waste.
+ * Only available once every tableau card is face up.
+ */
+export function getAutoCompleteStep(state: GameState): AutoCompleteStep | null {
+  if (state.hasWon || !allTableauFaceUp(state)) return null;
+  const move = getAutoCompleteMove(state);
+  if (move) return { type: 'move', ...move };
+  if (state.stock.length > 0 || state.waste.length > 0) return { type: 'draw' };
+  return null;
+}
+
+/**
+ * True when repeating getAutoCompleteStep() is guaranteed to win the game.
+ * Plays the steps out on a copy so the button is never offered for a position
+ * the auto-finish would get stuck in (e.g. a needed card buried in the waste
+ * that Draw 3 can never reach).
+ */
+export function canAutoComplete(state: GameState, drawMode: DrawMode = 1): boolean {
+  if (state.hasWon || !allTableauFaceUp(state)) return false;
+
+  const sim: GameState = {
+    ...state,
+    stock: [...state.stock],
+    waste: [...state.waste],
+    foundations: state.foundations.map(f => [...f]),
+    tableau: state.tableau.map(t => [...t]),
+  };
+  let drawsSinceMove = 0;
+
+  for (;;) {
+    if (checkWin(sim)) return true;
+    const step = getAutoCompleteStep(sim);
+    if (!step) return false;
+
+    if (step.type === 'move') {
+      const card = getPileCards(sim, step.from).pop()!;
+      getPileCards(sim, step.to).push(card);
+      drawsSinceMove = 0;
+      continue;
+    }
+
+    // A full pass through the stock without playing a card means it never will
+    if (++drawsSinceMove > sim.stock.length + sim.waste.length + 1) return false;
+    if (sim.stock.length > 0) {
+      const count = Math.min(drawMode, sim.stock.length);
+      for (let i = 0; i < count; i++) sim.waste.push({ ...sim.stock.pop()!, faceUp: true });
+    } else {
+      sim.stock = sim.waste.reverse();
+      sim.waste = [];
     }
   }
-  return true;
 }
 
 export function getAutoCompleteMove(
@@ -296,4 +348,89 @@ export function findSafeAutoMoves(
   }
 
   return moves;
+}
+
+// ── Tap-to-move ───────────────────────────────────────────────
+
+/**
+ * Where a tapped card should go: a foundation if it fits, otherwise onto
+ * another tableau pile, otherwise (Kings) into an empty column.
+ */
+export function findBestMoveTarget(
+  state: GameState,
+  from: PileId,
+  cardIndex: number
+): PileId | null {
+  if (from.startsWith('foundation-')) return null;
+  const targets = getValidDropTargets(state, from, cardIndex);
+  if (targets.length === 0) return null;
+
+  const foundation = targets.find(t => t.startsWith('foundation-'));
+  if (foundation) return foundation;
+
+  const occupied = targets.find(t => getPileCards(state, t).length > 0);
+  if (occupied) return occupied;
+
+  // A King that already sits at the bottom of its column gains nothing from moving
+  if (from.startsWith('tableau-') && cardIndex === 0) return null;
+  return targets[0];
+}
+
+// ── Hints ─────────────────────────────────────────────────────
+
+export type Hint =
+  | { type: 'draw' }
+  | { type: 'move'; from: PileId; to: PileId; cardIndex: number };
+
+const TABLEAU_IDS: PileId[] = [
+  'tableau-0', 'tableau-1', 'tableau-2', 'tableau-3', 'tableau-4', 'tableau-5', 'tableau-6',
+];
+
+/** Suggest a move that makes progress, or drawing from the stock when nothing on the board does. */
+export function getHint(state: GameState): Hint | null {
+  if (state.hasWon) return null;
+
+  // 1. Anything that can go up to a foundation
+  const toFoundation = getAutoCompleteMove(state);
+  if (toFoundation) return { type: 'move', ...toFoundation };
+
+  // 2. Move a whole face-up run to uncover a face-down card
+  for (const from of TABLEAU_IDS) {
+    const pile = getPileCards(state, from);
+    const runStart = pile.findIndex(c => c.faceUp);
+    if (runStart <= 0) continue;
+    for (const to of TABLEAU_IDS) {
+      if (isValidMove(state, from, to, runStart)) return { type: 'move', from, to, cardIndex: runStart };
+    }
+  }
+
+  // 3. Bring the waste card into play
+  if (state.waste.length > 0) {
+    const cardIndex = state.waste.length - 1;
+    for (const to of TABLEAU_IDS) {
+      if (isValidMove(state, 'waste', to, cardIndex)) return { type: 'move', from: 'waste', to, cardIndex };
+    }
+  }
+
+  // 4. Clear a column — worth it only when a King is waiting for the space
+  const wasteTop = state.waste[state.waste.length - 1];
+  const kingWaiting =
+    wasteTop?.rank === 'K' ||
+    state.tableau.some(pile => {
+      const runStart = pile.findIndex(c => c.faceUp);
+      return runStart > 0 && pile[runStart].rank === 'K';
+    });
+  if (kingWaiting && state.tableau.every(pile => pile.length > 0)) {
+    for (const from of TABLEAU_IDS) {
+      const pile = getPileCards(state, from);
+      if (pile.length === 0 || !pile[0].faceUp || pile[0].rank === 'K') continue;
+      for (const to of TABLEAU_IDS) {
+        if (isValidMove(state, from, to, 0)) return { type: 'move', from, to, cardIndex: 0 };
+      }
+    }
+  }
+
+  // 5. Otherwise turn over more cards
+  if (state.stock.length > 0 || state.waste.length > 1) return { type: 'draw' };
+  return null;
 }

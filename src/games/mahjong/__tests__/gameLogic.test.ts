@@ -9,6 +9,7 @@ import {
   findValidPairs,
   removePair,
   shuffleRemainingTiles,
+  tryArrangeSolvable,
   getHint,
   checkWin,
   checkLose,
@@ -45,6 +46,7 @@ function placeTile(
 
 function emptyState(overrides: Partial<MahjongGameState> = {}): MahjongGameState {
   return {
+    gameId: 'test',
     tiles: [],
     removedPairs: [],
     selectedTile: null,
@@ -122,6 +124,85 @@ describe('TURTLE_LAYOUT', () => {
   it('uses 5 layers (0-4)', () => {
     const layers = new Set(TURTLE_LAYOUT.map(p => p.layer));
     expect(layers).toEqual(new Set([0, 1, 2, 3, 4]));
+  });
+
+  it('is the classic turtle: 87 / 36 / 16 / 4 / 1 tiles per layer', () => {
+    const perLayer = [0, 1, 2, 3, 4].map(layer => TURTLE_LAYOUT.filter(p => p.layer === layer).length);
+    expect(perLayer).toEqual([87, 36, 16, 4, 1]);
+  });
+
+  it('never puts two tiles in the same or an overlapping spot', () => {
+    for (let i = 0; i < TURTLE_LAYOUT.length; i++) {
+      for (let j = i + 1; j < TURTLE_LAYOUT.length; j++) {
+        const a = TURTLE_LAYOUT[i];
+        const b = TURTLE_LAYOUT[j];
+        const overlaps = a.layer === b.layer && Math.abs(a.row - b.row) < 2 && Math.abs(a.col - b.col) < 2;
+        expect(overlaps).toBe(false);
+      }
+    }
+  });
+
+  it('rests every upper tile on at least one tile of the layer below', () => {
+    for (const tile of TURTLE_LAYOUT.filter(p => p.layer > 0)) {
+      const supported = TURTLE_LAYOUT.some(p =>
+        p.layer === tile.layer - 1 && Math.abs(p.row - tile.row) < 2 && Math.abs(p.col - tile.col) < 2
+      );
+      expect(supported).toBe(true);
+    }
+  });
+});
+
+// ── Solvable deals ───────────────────────────────────────────
+
+describe('solvable arrangements', () => {
+  it('lays out a full set with a solution that really clears the board', () => {
+    let checked = 0;
+    for (let attempt = 0; attempt < 60 && checked < 5; attempt++) {
+      const arranged = tryArrangeSolvable(createTileSet(), TURTLE_LAYOUT);
+      if (!arranged) continue; // an attempt may paint itself into a corner; dealGame retries
+      checked++;
+
+      expect(arranged.tiles).toHaveLength(144);
+      expect(arranged.solution).toHaveLength(72);
+
+      let tiles = arranged.tiles;
+      for (const [idA, idB] of arranged.solution) {
+        const a = tiles.find(t => t.tile.id === idA)!;
+        const b = tiles.find(t => t.tile.id === idB)!;
+        expect(tilesMatch(a.tile, b.tile)).toBe(true);
+        expect(isTileFree(a, tiles)).toBe(true);
+        expect(isTileFree(b, tiles)).toBe(true);
+        tiles = tiles.filter(t => t !== a && t !== b);
+      }
+      expect(tiles).toHaveLength(0);
+    }
+    expect(checked).toBe(5);
+  });
+
+  it('returns null when the tiles cannot be paired up', () => {
+    const tiles = [makeTile('a', 'k1'), makeTile('b', 'k2')];
+    const positions = [{ row: 0, col: 0, layer: 0 }, { row: 0, col: 8, layer: 0 }];
+    expect(tryArrangeSolvable(tiles, positions)).toBeNull();
+  });
+
+  it('deals a board that starts with moves available', () => {
+    for (let i = 0; i < 10; i++) {
+      const state = dealGame();
+      expect(findValidPairs(state.tiles).length).toBeGreaterThan(0);
+      expect(new Set(state.tiles.map(t => t.tile.id)).size).toBe(144);
+    }
+  });
+
+  it('shuffles the remaining tiles into a position with moves available', () => {
+    let state = dealGame();
+    for (let i = 0; i < 20; i++) {
+      const [a, b] = findValidPairs(state.tiles)[0];
+      state = removePair(state, a.tile.id, b.tile.id);
+    }
+    const shuffled = shuffleRemainingTiles(state);
+    expect(shuffled.tiles).toHaveLength(state.tiles.length);
+    expect(shuffled.tiles.map(t => t.position)).toEqual(state.tiles.map(t => t.position));
+    expect(shuffled.hasLost).toBe(false);
   });
 });
 
