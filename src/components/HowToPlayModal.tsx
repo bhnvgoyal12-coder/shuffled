@@ -95,7 +95,7 @@ function FreeCellRules() {
         <p className="m-0">Move groups of cards at once depending on how many free cells and empty columns are available. More open spaces means bigger moves.</p>
       </Section>
       <Section title="Moving Cards">
-        <p className="m-0">Tap a card to send it to the best available spot — a foundation, another column, or a free cell — or drag it exactly where you want it. The lightbulb suggests a move.</p>
+        <p className="m-0">Tap a card to pick it up — the places it can go light up — then tap where you want it. You can also drag cards, and double-tap sends a card straight to its foundation. The lightbulb suggests a move.</p>
       </Section>
       <Section title="Tip">
         <p className="m-0 text-[var(--text-soft)]">Keep free cells open as long as possible. The more available, the larger groups you can move.</p>

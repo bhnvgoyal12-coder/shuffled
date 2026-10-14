@@ -224,8 +224,8 @@ export function SettingsModal({ onClose, onNewGame, gameType }: SettingsModalPro
           </div>
         </div>
 
-        {/* Tap to Move — Klondike & FreeCell */}
-        {(!gameType || gameType === 'klondike' || gameType === 'freecell') && (
+        {/* Tap to Move — Klondike only. FreeCell is always pick-up-then-place. */}
+        {(!gameType || gameType === 'klondike') && (
           <div className="mb-5">
             <div className="flex items-center justify-between gap-3">
               <div>

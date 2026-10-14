@@ -10,7 +10,6 @@ import {
   canAutoComplete,
   getAutoCompleteMove,
   findAutoMoveToFoundation,
-  findBestMoveTarget,
   findSafeFreeCellAutoMoves,
   getHint,
   getValidFreeCellDropTargets,
@@ -142,12 +141,26 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
   // ── Tapping cards ───────────────────────────────────────────
   const lastTap = useRef<{ pileId: FreeCellPileId; cardIndex: number; time: number } | null>(null);
 
+  // FreeCell is always played in two taps — pick a card up, then choose where it goes.
+  // Which of several legal places a card should go is the whole game here, so nothing moves on a single tap.
   const handleCardClick = useCallback(
     (pileId: string, cardIndex: number) => {
       const id = pileId as FreeCellPileId;
-      const pile = getPileCards(state, id);
-      const card = pile[cardIndex];
+      const card = getPileCards(state, id)[cardIndex];
       if (!card) return;
+
+      // Double-tap sends a card straight up to its foundation
+      const now = Date.now();
+      const prev = lastTap.current;
+      if (prev && prev.pileId === id && prev.cardIndex === cardIndex && now - prev.time < DOUBLE_TAP_MS) {
+        lastTap.current = null;
+        const target = findAutoMoveToFoundation(state, id, cardIndex);
+        if (target) {
+          moveCards(id, target, cardIndex);
+          return;
+        }
+      }
+      lastTap.current = { pileId: id, cardIndex, time: now };
 
       // A card is already picked up: this tap says where it goes
       if (state.selectedCard) {
@@ -160,50 +173,11 @@ export function Board({ onGoHome }: FreeCellBoardProps) {
         return;
       }
 
-      if (settings.tapToMove) {
-        if (id.startsWith('foundation-')) return; // cards on a foundation stay there
-        if (!isMovableRun(state, id, cardIndex)) {
-          shakeCard(card.id);
-          return;
-        }
-        const target = findBestMoveTarget(state, id, cardIndex);
-        if (target) {
-          moveCards(id, target, cardIndex);
-        } else if (getValidFreeCellDropTargets(state, id, cardIndex).length > 0) {
-          // It can move, but there is no obvious best place — let the player choose
-          selectCard(id, cardIndex);
-        } else {
-          // Too long a run for the free space available?
-          if (id.startsWith('tableau-') && cardIndex < pile.length - 1) {
-            for (let t = 0; t < 8; t++) {
-              const limit = supermoveLimit(state, id, `tableau-${t}` as FreeCellPileId, cardIndex);
-              if (limit !== null) {
-                showSupermoveToast(limit);
-                break;
-              }
-            }
-          }
-          shakeCard(card.id);
-        }
-        return;
-      }
-
-      const now = Date.now();
-      const prev = lastTap.current;
-      if (prev && prev.pileId === id && prev.cardIndex === cardIndex && now - prev.time < DOUBLE_TAP_MS) {
-        lastTap.current = null;
-        const target = findAutoMoveToFoundation(state, id, cardIndex);
-        if (target) {
-          moveCards(id, target, cardIndex);
-          return;
-        }
-      }
-
-      lastTap.current = { pileId: id, cardIndex, time: now };
+      if (id.startsWith('foundation-')) return; // cards on a foundation stay there
       if (isMovableRun(state, id, cardIndex)) selectCard(id, cardIndex);
       else shakeCard(card.id);
     },
-    [selectCard, state, moveCards, settings.tapToMove, showSupermoveToast]
+    [selectCard, state, moveCards, showSupermoveToast]
   );
 
   const handlePileClick = useCallback(
